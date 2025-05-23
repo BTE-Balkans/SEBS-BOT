@@ -3,8 +3,8 @@ import { CommandInteraction } from 'discord.js'
 
 export default async function execute(client: Bot, interaction: CommandInteraction) {
     if (
-        (!client.test && interaction.guild?.id == '935926834019844097') ||
-        (client.test && interaction.guild?.id != '935926834019844097')
+        (!client.test && interaction.guild?.id == '1205901531044647032') ||
+        (client.test && interaction.guild?.id != '1205901531044647032')
     )
         return
 
@@ -30,7 +30,7 @@ export default async function execute(client: Bot, interaction: CommandInteracti
             }
         }
 
-        await interaction.deferReply()
+        await interaction.deferReply() //{ephemeral: true}
 
         command.run(interaction, client)
         

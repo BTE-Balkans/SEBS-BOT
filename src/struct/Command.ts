@@ -28,7 +28,6 @@ class Command {
         if (this.args) {
             addOptions(this.args, Builder)
         }
-
         if (this.subCommands) {
             this.subCommands.forEach((subCmd) => {
                 const SubCommandBuilder = new SlashCommandSubcommandBuilder()
@@ -42,15 +41,17 @@ class Command {
 
         function addOptions(options, builder) {
             options.forEach((opt) => {
-                if (!opt.choices) {
-                    opt.choices = []
+                let choices = []
+                if (Array.isArray(opt.choices)) {
+                    choices = opt.choices.map(([name, value]) => ({name, value}))
                 }
+
                 if (opt.optionType == 'string') {
                     builder.addStringOption((option) =>
                         option
                             .setName(opt.name)
                             .setDescription(opt.description)
-                            .setChoices(opt.choices)
+                            .setChoices(...choices)
                             .setRequired(opt.required)
                     )
                 } else if (opt.optionType == 'number') {
@@ -58,7 +59,7 @@ class Command {
                         option
                             .setName(opt.name)
                             .setDescription(opt.description)
-                            .setChoices(opt.choices)
+                            .setChoices(...choices)
                             .setRequired(opt.required)
                     )
                 } else if (opt.optionType == 'integer') {
@@ -66,7 +67,7 @@ class Command {
                         option
                             .setName(opt.name)
                             .setDescription(opt.description)
-                            .setChoices(opt.choices)
+                            .setChoices(...choices)
                             .setRequired(opt.required)
                     )
                 } else if (opt.optionType == 'user') {

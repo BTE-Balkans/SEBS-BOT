@@ -14,7 +14,7 @@ export default new Command({
         },
         {
             name: 'global',
-            description: `View global NASBS points from all teams`,
+            description: `View global SEBS points from all teams`,
             required: false,
             optionType: 'boolean'
         }
