@@ -1,0 +1,9 @@
+node_modules
+configSample.ts
+configTest.ts
+.vscode
+.github
+.gitattributes
+.gitignore
+.prettierrc
+README.md

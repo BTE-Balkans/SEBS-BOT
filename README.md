@@ -1,1 +1,1 @@
-# NASBS Bot.
+# SEBS Bot.

@@ -1,0 +1,13 @@
+name: Docker Image for GHCR
+on:
+  push
+jobs:
+  build_and_publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build and push image
+        run:  |
+          echo ${{secrets.GH_PAT}} | docker login ghcr.io --username BTE-Balkans --password-stdin
+          docker build . -t ghcr.io/bte-balkans/sebs-bot:latest
+          docker push ghcr.io/bte-balkans/sebs-bot:latest
