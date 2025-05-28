@@ -17,6 +17,7 @@
         "typescript": "^4.9.4"
     },
     "scripts": {
+        "build": "tsc",
         "start": "node --loader ts-node/esm src/index.ts",
         "deploy": "node --loader ts-node/esm src/deploy.ts",
         "merge": "node --loader ts-node/esm src/merge.ts",

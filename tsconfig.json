@@ -2,7 +2,7 @@
   "compilerOptions": {
     "outDir": "./built",
     "target": "ESNext",
-    "module": "ESNext",
+    "module": "NodeNext",
 	  "skipLibCheck": true,
 	  "moduleResolution": "NodeNext",
     "esModuleInterop": true
@@ -14,5 +14,5 @@
     "esm": true,
     "logError": true
   },
-  "include": ["./src/**/*"]
+  "include": ["./src/**/*", "./config.ts"]
 }

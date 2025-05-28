@@ -1,6 +1,6 @@
 FROM node:20-alpine
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm install --production 
-COPY . .
-CMD ["npm", "run", "start"]
+RUN npm install --omit=dev
+COPY built .
+CMD ["node", "src/index.js"]

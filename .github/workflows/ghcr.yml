@@ -8,6 +8,8 @@ jobs:
       - uses: actions/checkout@v3
       - name: Build and push image
         run:  |
+          npm install
+          npm run build
           echo ${{secrets.GH_PAT}} | docker login ghcr.io --username BTE-Balkans --password-stdin
           docker build . -t ghcr.io/bte-balkans/sebs-bot:latest
           docker push ghcr.io/bte-balkans/sebs-bot:latest
