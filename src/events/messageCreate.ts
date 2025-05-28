@@ -64,8 +64,8 @@ async function reject(client, msg, guild, reason) {
     const rejectionMsg = await msg.channel.send({ embeds: [embed] })
 
     setTimeout(() => {
-        rejectionMsg.delete()
-        msg.delete()
+        rejectionMsg.delete().catch(() => {})
+        msg.delete().catch(() => {})
     }, 30000)
 }
 
