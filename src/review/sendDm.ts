@@ -1,4 +1,4 @@
-import Discord, { CommandInteraction, GuildMember } from 'discord.js'
+import { CommandInteraction, GuildMember } from 'discord.js'
 import areDmsEnabled from '../utils/areDmsEnabled.js'
 import { GuildInterface } from '../struct/Guild.js'
 
@@ -11,18 +11,18 @@ async function sendDm(
     // after updating db, send dm (does this for edits and initial reviews)
     // send dm if user has it enabled
     const dmsEnabled = await areDmsEnabled(member.id)
-
     if (dmsEnabled && member) {
         const dm = await member.createDM()
         await dm
             .send({
                 embeds: [
-                    new Discord.MessageEmbed()
-                        .setTitle(`${guildData.emoji} Build reviewed! ${guildData.emoji}`)
-                        .setDescription(`You ${reply}`)
-                        .setFooter({
+                    {
+                        title: `${guildData.emoji} Build reviewed! ${guildData.emoji}`,
+                        description: `You ${reply}`,
+                        footer: {
                             text: `Use the cmd '/preferences' to toggle build review DMs.`
-                        })
+                        }
+                    }
                 ]
             })
             .catch((err) => {

@@ -10,12 +10,26 @@ import { sendDm } from '../review/sendDm.js'
 import { addCheckmarkReaction } from '../review/addCheckmarkReaction.js'
 import { updateReviewerForAcceptance } from '../review/updateReviewer.js'
 import Responses from '../utils/responses.js'
+import { claimSubmission } from '../review/claimSubmission.js'
+import { addReviewingReaction } from '../review/addReviewingReaction.js'
 
 export default new Command({
     name: 'review',
     description: 'review builds.',
     reviewer: true,
     subCommands: [
+        {
+            name: 'claim',
+            description: 'Claim a submission',
+            args: [
+                {
+                    name: 'submissionid',
+                    description: 'Submission msg id',
+                    required: true,
+                    optionType: 'string'
+                }
+            ]
+        },
         {
             name: 'one',
             description: 'Review one building.',
@@ -38,13 +52,13 @@ export default new Command({
         }
     ],
     async run(i, client) {
+        const subCommand = i.options.getSubcommand()
         const guildData = client.guildsData.get(i.guild.id)
         const options = i.options
         const submitChannel = (await i.guild.channels.fetch(
             guildData.submitChannel
         )) as TextChannel //await client.channels.fetch(guildData.submitChannel)
         const submissionId = await options.getString('submissionid')
-        const feedback = validateFeedback(options.getString('feedback'))
         const isEdit = options.getBoolean('edit') || false
         let submissionMsg: Message
 
@@ -61,15 +75,26 @@ export default new Command({
         // Check if it already got declined / purged
         const isRejected = await checkIfRejected(submissionId)
 
-        // Check if it already got accepted
+        // Check if it was not yet claimed
         const originalSubmission = await Submission.findById(submissionId).exec()
 
-        if (isEdit && originalSubmission == null && !isRejected) {
+        if(originalSubmission == null && subCommand != 'claim' && !isRejected) {
+            return Responses.submissionNotBeenClaimed(i)
+        } else if(originalSubmission != null && originalSubmission.reviewer != i.user.id && subCommand != 'claim') {
+            const reviewer = await client.users.fetch(originalSubmission.reviewer)
+            return Responses.submissionClaimedByAnotherReviewer(i, reviewer)
+        } else if (isEdit && originalSubmission != null && originalSubmission.feedback == null && !isRejected) {
             return Responses.submissionHasNotBeenReviewed(i)
-        } else if (!isEdit && originalSubmission) {
+        } else if (!isEdit && originalSubmission != null && originalSubmission.feedback != null) {
             return Responses.submissionHasAlreadyBeenAccepted(i)
         } else if (isRejected) {
             return Responses.submissionHasAlreadyBeenDeclined(i)
+        }
+
+        let feedback = null
+
+        if(subCommand != 'claim') {
+            feedback = validateFeedback(options.getString('feedback'))
         }
 
         // set variables shared by all subcommands
@@ -99,7 +124,20 @@ export default new Command({
         }
 
         // subcommands
-        if (i.options.getSubcommand() == 'one') {
+        if(subCommand == 'claim') {
+            //Check if the submission was already claimed
+            if(originalSubmission) {
+                if(originalSubmission.feedback == null && originalSubmission.reviewer != null) {
+                    return Responses.submissionAlreadyClaimed(i)
+                } else {
+                    return Responses.submissionHasAlreadyBeenAccepted(i)
+                }
+            } else {
+                await claimSubmission(i.user, submissionData, i)
+                await sendDm(builder, guildData, `The [submission](${submissionMsg.url}) has been claimed by ${i.user}. Await review`, i)
+                await addReviewingReaction(submissionMsg)
+            }
+        } else if (subCommand == 'one') {
             // set subcmd-specific variables
             const size = options.getInteger('size')
             const quality = options.getNumber('quality')
@@ -155,7 +193,7 @@ export default new Command({
             await updateReviewerForAcceptance(originalSubmission, submissionData, i)
             await sendDm(builder, guildData, reply, i)
             await addCheckmarkReaction(submissionMsg)
-        } else if (i.options.getSubcommand() == 'many') {
+        } else if (subCommand == 'many') {
             const smallAmt = options.getInteger('smallamt')
             const mediumAmt = options.getInteger('mediumamt')
             const largeAmt = options.getInteger('largeamt')
@@ -202,7 +240,7 @@ export default new Command({
             await updateReviewerForAcceptance(originalSubmission, submissionData, i)
             await sendDm(builder, guildData, reply, i)
             await addCheckmarkReaction(submissionMsg)
-        } else if (i.options.getSubcommand() == 'land') {
+        } else if (subCommand == 'land') {
             const sqm = options.getNumber('sqm')
             const landtype = options.getInteger('landtype')
             const quality = options.getNumber('quality')
@@ -236,7 +274,7 @@ export default new Command({
             await updateReviewerForAcceptance(originalSubmission, submissionData, i)
             await sendDm(builder, guildData, reply, i)
             await addCheckmarkReaction(submissionMsg)
-        } else if (i.options.getSubcommand() == 'road') {
+        } else if (subCommand == 'road') {
             const roadType = options.getNumber('roadtype')
             const roadKMs = options.getNumber('distance')
             const quality = options.getNumber('quality')

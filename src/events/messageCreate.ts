@@ -1,4 +1,4 @@
-import Discord from 'discord.js'
+import { title } from "process"
 
 export default async function execute(client, msg) {
     // ignore bot msgs
@@ -55,11 +55,10 @@ export default async function execute(client, msg) {
 
 // helper func that sends the rejection msg and deletes the submission
 async function reject(client, msg, guild, reason) {
-    const embed = new Discord.MessageEmbed()
-        .setTitle(`INCORRECT SUBMISSION FORMAT: ${reason}`)
-        .setDescription(
-            `**[Correct format:](${guild.formattingMsg})**\n[Build count]\n[Coordinates]\n[Location name] (OPTIONAL)\n[Image(s) of build]\n\n__The entire submission must be in ONE MESSAGE!__\nView [pinned message](${guild.formattingMsg}) for more details.`
-        )
+    const embed = {
+        title: `INCORRECT SUBMISSION FORMAT: ${reason}`,
+        description: `**[Correct format:](${guild.formattingMsg})**\n[Build count]\n[Coordinates]\n[Location name] (OPTIONAL)\n[Image(s) of build]\n\n__The entire submission must be in ONE MESSAGE!__\nView [pinned message](${guild.formattingMsg}) for more details.`
+    }
 
     const rejectionMsg = await msg.channel.send({ embeds: [embed] })
 

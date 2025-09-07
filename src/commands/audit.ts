@@ -1,9 +1,10 @@
-import Discord from 'discord.js'
 import Command from '../struct/Command.js'
 import { ReviewerInterface } from '../struct/Reviewer.js'
 import Submission from '../struct/Submission.js'
 import Rejection from '../struct/Rejection.js'
-import { pagination, TypesButtons } from '@devraelfreeze/discordjs-pagination'
+//import { pagination, ButtonTypes, ButtonStyles } from '@devraelfreeze/discordjs-pagination'
+import pagination, { PaginationButtonType } from '../utils/pagination.js'
+import { ButtonStyle } from 'discord.js'
 
 const ITEMS_PER_PAGE = 10
 const MAX_SIZE = 50
@@ -64,6 +65,8 @@ export default new Command({
         const options = i.options
         let guild = client.guildsData.get(i.guild.id)
         const global = options.getBoolean('global')
+
+        
 
         // leaderboard of reviewers by metric
         if (i.options.getSubcommand() == 'leaderboard') {
@@ -190,25 +193,50 @@ export default new Command({
 
             if (leaderboard.length == 0) {
                 pages = [
-                    new Discord.MessageEmbed()
-                    .setTitle(`Doesn't look like any reviews have happened here!`)
-                    .setDescription('')
+                    {
+                        title: `Doesn't look like any reviews have happened here!`,
+                        description: ''
+                    }
                 ]
             }
 
-            for (let i = 0; i < Math.ceil(leaderboard.length / ITEMS_PER_PAGE); i++) {
-                const startIndex = i * ITEMS_PER_PAGE
+            for (let p = 0; p < Math.ceil(leaderboard.length / ITEMS_PER_PAGE); p++) {
+                const startIndex = p * ITEMS_PER_PAGE
                 const endIndex = startIndex + ITEMS_PER_PAGE
-                const embed = new Discord.MessageEmbed()
-                .setTitle(`${metric.charAt(0).toUpperCase() + metric.slice(1)} Leaderboard for ${guild.emoji} ${guildName} ${guild.emoji}`)
-                .setDescription(leaderboard.map((element, index) => {
-                    return `**${index + 1}.** <@${element.id}>: ${element.val} ${pluralsMap[metric]}`
-                }).slice(startIndex, endIndex).join('\n\n'))
+                const embed = {
+                    title: `${metric.charAt(0).toUpperCase() + metric.slice(1)} Leaderboard for ${guild.emoji} ${guildName} ${guild.emoji}`,
+                    description: leaderboard.map((element, index) => {
+                        return `**${index + 1}.** <@${element.id}>: ${element.val} ${pluralsMap[metric]}`
+                    }).slice(startIndex, endIndex).join('\n\n')
+                }
 
                 pages.push(embed)
             }
-
+            
+        
             await pagination({
+                embeds: pages,
+                author: i.user,
+                interaction: i,
+                client: client,
+                ephemeral: false,
+                time: 60 * 1000,
+                buttons: [
+                    {
+                        type: PaginationButtonType.Previous,
+                        label: 'Previous',
+                        style: ButtonStyle.Primary
+                    },
+                    {
+                        type: PaginationButtonType.Previous,
+                        label: 'Next',
+                        style: ButtonStyle.Success
+                    }
+                ]
+            })
+
+
+            /*await pagination({
                 embeds: pages,
                 author: i.user,
                 interaction: i,
@@ -219,17 +247,17 @@ export default new Command({
                 pageTravel: false,
                 buttons: [
                     {
-                        value: TypesButtons.previous,
+                        type: ButtonTypes.previous,
                         label: 'Previous',
-                        style: 'PRIMARY'
+                        style: ButtonStyles.Secondary
                     },
                     {
-                        value: TypesButtons.next,
+                        type: ButtonTypes.next,
                         label: 'Next',
-                        style: 'PRIMARY'
+                        style: ButtonStyles.Primary
                     }
                 ]
-            })
+            })*/
         } else if (i.options.getSubcommand() == 'individual') {
             // ---------------------------------------------- INDIVIDUAL ----------------------------------------------
             const user = i.options.getUser('user')
@@ -443,19 +471,18 @@ export default new Command({
             if (!userData) {
                 return i.editReply({
                     embeds: [
-                        new Discord.MessageEmbed().setDescription(
-                            `\`${user.username}#${user.discriminator}\` is not a reviewer :frowning2: <:sad_cat:873457028981481473>`
-                        )
+                        {
+                            description: `\`${user.username}#${user.discriminator}\` is not a reviewer :frowning2: <:sad_cat:873457028981481473>`
+                        }
                     ]
                 })
             }
 
             await i.editReply({
                 embeds: [
-                    new Discord.MessageEmbed()
-                    .setTitle(`RESULT OF AUDIT`)
-                    .setDescription(
-                        `\`${user.username}#${user.discriminator}\` has :tada: ***${
+                    {
+                        title: `RESULT OF AUDIT`,
+                        description: `\`${user.username}#${user.discriminator}\` has :tada: ***${
                             userData.reviews
                         }***  :tada: reviews in ${guild.emoji} ${guildName} ${
                             guild.emoji
@@ -471,11 +498,11 @@ export default new Command({
                             userData.qualityAvg?.toFixed(3) || 0
                         }*** :gem:\nAverage complexity: :smiley_cat: ***${
                             userData.complexityAvg?.toFixed(3) || 0
-                        }*** :smiley_cat:`
-                    )
-                    .setFooter({
-                        text: 'average feedback calculations exclude any reviews without feedback.'
-                    })
+                        }*** :smiley_cat:`,
+                        footer: {
+                            text: 'average feedback calculations exclude any reviews without feedback.'
+                        }
+                    }
                 ]
             })
         }

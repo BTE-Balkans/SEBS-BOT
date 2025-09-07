@@ -1,4 +1,4 @@
-import { Client, Collection, Intents } from 'discord.js'
+import { Client, Collection, IntentsBitField } from 'discord.js'
 import fs from 'fs'
 import mongoose from 'mongoose'
 import path, { dirname } from 'path'
@@ -13,20 +13,22 @@ class Bot extends Client {
     test: boolean
     commands: Collection<string, Command>
     guildsData: Collection<string, GuildInterface>
+    admin: string
 
     constructor() {
         super({
             intents: [
-                Intents.FLAGS.GUILDS,
-                Intents.FLAGS.GUILD_MEMBERS,
-                Intents.FLAGS.GUILD_MESSAGES,
-                Intents.FLAGS.GUILD_MESSAGE_REACTIONS,
-                Intents.FLAGS.DIRECT_MESSAGES
+                IntentsBitField.Flags.Guilds,
+                IntentsBitField.Flags.GuildMembers,
+                IntentsBitField.Flags.GuildMessages,
+                IntentsBitField.Flags.GuildMessageReactions,
+                IntentsBitField.Flags.DirectMessages
             ]
         })
         this.test = config.test
         this.commands = new Collection()
         this.guildsData = new Collection()
+        this.admin = config.admin
     }
 
     async loadDatabase() {

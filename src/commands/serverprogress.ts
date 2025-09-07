@@ -4,7 +4,7 @@ import Responses from '../utils/responses.js'
 
 export default new Command({
     name: 'serverpogress',
-    description: 'view building counts in server.',
+    description: 'View building counts in server.',
     reviewer: false,
     args: [{
         name: 'serverid',

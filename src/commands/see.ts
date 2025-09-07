@@ -1,7 +1,7 @@
 import Command from '../struct/Command.js'
 import Submission, { SubmissionInterface } from '../struct/Submission.js'
 import Rejection, { RejectionInterface } from '../struct/Rejection.js'
-import Discord, { Message, TextChannel } from 'discord.js'
+import { Message, TextChannel } from 'discord.js'
 import { checkIfRejected } from '../utils/checkForSubmission.js'
 import Responses from '../utils/responses.js'
 
@@ -91,7 +91,9 @@ export default new Command({
 
         // send the review summary
         return i.editReply({
-            embeds: [new Discord.MessageEmbed().setTitle(`Points`).setDescription(summary)]
+            embeds: [{
+                title: 'Points',
+                description: summary}]
         })
     }
 })

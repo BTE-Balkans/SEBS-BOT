@@ -1,6 +1,6 @@
-import Discord from 'discord.js'
+import { User } from "discord.js"
 
-module Responses {
+namespace Responses {
 
     // SUBMISSION AREA
 
@@ -38,6 +38,18 @@ module Responses {
 
     export function submissionPermissionDenied(interaction) {
         return embed(interaction, `You cannot review a submission you submitted.`)
+    }
+
+    export function submissionNotBeenClaimed(interaction) {
+        return embed(interaction, 'The submission was not yet claimed')
+    }
+
+    export function submissionAlreadyClaimed(interaction) {
+        return embed(interaction, 'The submission was already claimed')
+    }
+
+    export function submissionClaimedByAnotherReviewer(interaction, reviewer: User) {
+        return embed(interaction, `The submission is claimed by the reviewer @${reviewer.username}`)
     }
 
     //
@@ -101,11 +113,11 @@ module Responses {
     export function createEmbed(message, title = '') {
         if (title != '') return createEmbedWithTitle(title, message)
 
-        return { embeds: [new Discord.MessageEmbed().setDescription(message)] }
+        return { embeds: [{ description: message }] }
     }
 
     function createEmbedWithTitle(title, message) {
-        return { embeds: [new Discord.MessageEmbed().setTitle(title).setDescription(message)] }
+        return { embeds: [{ title: title, description: message }] }
     }
 
     function formatNumber(num) {

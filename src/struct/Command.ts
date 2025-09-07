@@ -1,20 +1,22 @@
 import { SlashCommandBuilder, SlashCommandSubcommandBuilder } from '@discordjs/builders'
-import { CommandInteraction, Interaction } from 'discord.js'
+import { ChatInputCommandInteraction } from 'discord.js'
 import Bot from './Client.js'
 
 class Command {
     name: string
     description: string
     reviewer: boolean
+    admin: boolean
     args?: CommandArg[]
     subCommands?: SubCommandProperties[]
     cooldown?: number
-    run: (i: CommandInteraction, client: Bot) => void
+    run: (i: ChatInputCommandInteraction, client: Bot) => void
 
     constructor(properties: CommandProperties) {
         this.name = properties.name
         this.description = properties.description
         this.reviewer = properties.reviewer
+        this.admin = properties.admin
         this.args = properties.args
         this.subCommands = properties.subCommands
         this.cooldown = properties.cooldown || 500
@@ -39,7 +41,7 @@ class Command {
             })
         }
 
-        function addOptions(options, builder) {
+        function addOptions(options : CommandArg[], builder) {
             options.forEach((opt) => {
                 let choices = []
                 if (Array.isArray(opt.choices)) {
@@ -116,9 +118,10 @@ interface SubCommandProperties {
 
 interface CommandProperties extends SubCommandProperties {
     reviewer?: boolean
+    admin?: boolean
     subCommands?: SubCommandProperties[]
     cooldown?: number
-    run: (i: CommandInteraction, client: Bot) => void
+    run: (i: ChatInputCommandInteraction, client: Bot) => void
 }
 
 export default Command

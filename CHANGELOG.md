@@ -1,0 +1,7 @@
+- 1.0.1
+    - Migration to discord.js v14
+    - Migration to ESLint 9
+    - Added custom paginator (instead of `@devraelfreeze/discordjs-pagination`)
+    - Added admin role for command
+    - Review role is now an array of roles
+    - Submissions now must be first claimed before they are reviewed

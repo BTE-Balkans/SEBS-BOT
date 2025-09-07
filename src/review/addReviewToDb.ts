@@ -38,7 +38,7 @@ async function addReviewToDb(
         }).exec()
 
         // update builder doc
-        if (submissionData.edit && originalSubmission) {
+        if (submissionData.edit && originalSubmission && originalSubmission.feedback != null) {
             // for edits ----------------------------------------------------
             // get change from original submission, update user's total points and the countType field
             const pointsIncrement = submissionData.pointsTotal - originalSubmission.pointsTotal

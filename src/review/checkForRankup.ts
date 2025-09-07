@@ -1,7 +1,8 @@
-import Discord, { CommandInteraction, GuildMember } from 'discord.js'
+import { CommandInteraction, GuildMember } from 'discord.js'
 import { GuildInterface } from '../struct/Guild.js'
 import Submission from '../struct/Submission.js'
 import Builder from '../struct/Builder.js'
+import { title } from 'process'
 
 // function for sending dm and upgrading role, same for all rankups
 async function doRankup(
@@ -13,11 +14,10 @@ async function doRankup(
     i: CommandInteraction
 ) {
     // send rankup DM
-    const embed = new Discord.MessageEmbed()
-    .setTitle(
-        `NEW RANK ACHIEVED! You're now a ${emoji} ${emoji} **${name}!** ${emoji} ${emoji}`
-    )
-    .setDescription(msg)
+    const embed = {
+        title: `NEW RANK ACHIEVED! You're now a ${emoji} ${emoji} **${name}!** ${emoji} ${emoji}`,
+        description: msg
+    }
 
     const dm = await member.createDM()
     await dm.send({ embeds: [embed] }).catch((err) => {

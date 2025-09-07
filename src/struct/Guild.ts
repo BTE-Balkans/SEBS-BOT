@@ -8,7 +8,7 @@ const Guild = mongoose.model<GuildInterface>(
         name: String,
         submitChannel: String,
         formattingMsg: String,
-        reviewerRole: String,
+        reviewerRoles: [String],
         rank1: { id: String, points: Number, name: String },
         rank2: { id: String, points: Number, name: String },
         rank3: { id: String, points: Number, name: String },
@@ -23,7 +23,7 @@ export interface GuildInterface {
     name: string
     submitChannel: string
     formattingMsg: string
-    reviewerRole: string
+    reviewerRoles: string[]
     rank1: Rank
     rank2: Rank
     rank3: Rank

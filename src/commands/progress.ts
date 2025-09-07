@@ -1,6 +1,5 @@
 import Command from '../struct/Command.js'
 import Submission from '../struct/Submission.js'
-import Discord from 'discord.js'
 
 const MASTER_BUILDER_QUALITY_POINTS = 200
 const ARCHITECT_QUALITY_POINTS = 500
@@ -100,7 +99,9 @@ export default new Command({
 
         if (pointsQuery[0] === undefined) {
             return i.editReply({
-                embeds: [new Discord.MessageEmbed().setDescription(`\<@${user.id}> has no completed builds!`)]
+                embeds: [ {
+                    description: `\<@${user.id}> has no completed builds!`
+                }]
             })
         }
 
@@ -109,14 +110,14 @@ export default new Command({
         // they are not above a normal builder
         if (points < guildData.rank2.points) {
             return i.editReply({
-                embeds: [new Discord.MessageEmbed().setDescription(
-                    `**Progress of <@${user.id}> in ${guildData.emoji} ${guildName} ${guildData.emoji}**
+                embeds: [ {
+                    description: `**Progress of <@${user.id}> in ${guildData.emoji} ${guildName} ${guildData.emoji}**
                     
                     **Current rank:** ${guildData.rank1.name}
                     
                     **Progress towards ${guildData.rank2.name}:**
                     ${points.toFixed(2).replace(/[.,]00$/, '')}/${guildData.rank2.points} points`
-                )]
+                }]
             })
         }
 
@@ -142,30 +143,30 @@ export default new Command({
         // they are not above master builder
         if (points < guildData.rank3.points || largeBuildPoints < MASTER_BUILDER_QUALITY_POINTS) {
             return i.editReply({
-                embeds: [new Discord.MessageEmbed().setDescription(
-                    `**Progress of <@${user.id}> in ${guildData.emoji} ${guildName} ${guildData.emoji}**
+                embeds: [{ 
+                    description: `**Progress of <@${user.id}> in ${guildData.emoji} ${guildName} ${guildData.emoji}**
                     
                     **Current rank:** ${guildData.rank2.name}
                     
                     **Progress towards ${guildData.rank3.name}:**
                     ${points.toFixed(2).replace(/[.,]00$/, '')}**/${guildData.rank3.points}** points
                     ${largeBuildPoints.toFixed(2).replace(/[.,]00$/, '')}**/${MASTER_BUILDER_QUALITY_POINTS}** points from Good/Excellent quality Medium builds`
-                )]
+                }]
             })
         }
 
         // they are not above architect
         if (points < guildData.rank4.points || largeBuildPoints < ARCHITECT_QUALITY_POINTS) {
             return i.editReply({
-                embeds: [new Discord.MessageEmbed().setDescription(
-                    `**Progress of <@${user.id}> in ${guildData.emoji} ${guildName} ${guildData.emoji}**
+                embeds: [{
+                    description: `**Progress of <@${user.id}> in ${guildData.emoji} ${guildName} ${guildData.emoji}**
                         
                     **Current rank:** ${guildData.rank3.name}
                     
                     **Progress towards ${guildData.rank4.name}:**
                     ${points.toFixed(2).replace(/[.,]00$/, '')}**/${guildData.rank4.points}** points
                     ${largeBuildPoints.toFixed(2).replace(/[.,]00$/, '')}**/${ARCHITECT_QUALITY_POINTS}** points from Good/Excellent quality Medium/Large builds`
-                )]
+                }]
             })
         }
 
@@ -190,26 +191,26 @@ export default new Command({
 
         if (points < guildData.rank5.points || championBuildPoints < MASTER_BUILDER_QUALITY_POINTS) {
             return i.editReply({
-                embeds: [new Discord.MessageEmbed().setDescription(
-                    `**Progress of <@${user.id}> in ${guildData.emoji} ${guildName} ${guildData.emoji}**
+                embeds: [{
+                    description:  `**Progress of <@${user.id}> in ${guildData.emoji} ${guildName} ${guildData.emoji}**
                     
                     **Current rank:** ${guildData.rank4.name}!
                     
                     **Progress towards ${guildData.rank5.name}:**
                     ${points.toFixed(2).replace(/[.,]00$/, '')}**/${guildData.rank5.points}** points
                     ${championBuildPoints.toFixed(2).replace(/[.,]00$/, '')}**/${MASTER_BUILDER_QUALITY_POINTS}** points from Excellent quality builds of any size`
-                )]
+                }]
             })
         }
 
         return i.editReply({
-            embeds: [new Discord.MessageEmbed().setDescription(
-                `**Progress of <@${user.id}> in ${guildData.emoji} ${guildName} ${guildData.emoji}**
+            embeds: [ {
+                description: `**Progress of <@${user.id}> in ${guildData.emoji} ${guildName} ${guildData.emoji}**
                     
                 **Current rank:** ${guildData.rank5.name}!
                 
                 You are at the top. Congratulations!`
-            )]
+            }]
         })
     }
 })
