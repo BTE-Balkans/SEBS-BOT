@@ -78,7 +78,7 @@ async function updateReviewerAverages(reviewer: ReviewerInterface) {
         qualityAverage = averages[0].quality_average
     }
 
-    Reviewer.updateOne({
+    await Reviewer.updateOne({
         id: reviewer.id,
         guildId: reviewer.guildId
     }, {
@@ -88,7 +88,7 @@ async function updateReviewerAverages(reviewer: ReviewerInterface) {
             feedbackCharsAvg: feedbackCharsAverage,
             feedbackWordsAvg: feedbackWordsAverage
         }
-    })
+    }).exec()
 }
 
 /**

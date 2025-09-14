@@ -18,16 +18,16 @@ async function claimSubmission(
         // insert submission into db
         await Submission.updateOne({_id: submissionData._id}, submissionData, {
             upsert: true
-        }).exec()
+        })
 
         // insert builder if not yet added
-        const res = await Builder.updateOne({ id: submissionData.userId, guildId: i.guild.id}, {}, {upsert: true}).exec()
+        const res = await Builder.updateOne({ id: submissionData.userId, guildId: i.guild.id}, {}, {upsert: true})
         if(res.upsertedId){
             await Builder.updateOne({ id: submissionData.userId, guildId: i.guild.id}, { 
                 $set: {
                     dm: true
                 }
-            }, {upsert: true}).exec()
+            }, {upsert: true})
         }
 
         return i.editReply(Responses.createEmbed(

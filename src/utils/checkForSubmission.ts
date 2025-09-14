@@ -9,7 +9,7 @@ import Submission, { SubmissionInterface } from '../struct/Submission.js'
 async function checkIfAccepted(submissionId: string) {
     const submission: SubmissionInterface = await Submission.findById(submissionId).exec()
 
-    if (submission) {
+    if (submission && submission.feedback != null) {
         return true
     }
 }

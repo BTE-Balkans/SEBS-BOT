@@ -134,7 +134,7 @@ export default new Command({
                 }
             } else {
                 await claimSubmission(i.user, submissionData, i)
-                await sendDm(builder, guildData, `The [submission](${submissionMsg.url}) has been claimed by ${i.user}. Await review`, i)
+                await sendDm(builder, guildData, i, `The [submission](${submissionMsg.url}) has been claimed by ${i.user}. Await review`, 'Build claimed')
                 await addReviewingReaction(submissionMsg)
             }
         } else if (subCommand == 'one') {
@@ -191,7 +191,7 @@ export default new Command({
             )
             await checkForRankup(builder, guildData, i)
             await updateReviewerForAcceptance(originalSubmission, submissionData, i)
-            await sendDm(builder, guildData, reply, i)
+            await sendDm(builder, guildData, i, reply)
             await addCheckmarkReaction(submissionMsg)
         } else if (subCommand == 'many') {
             const smallAmt = options.getInteger('smallamt')
@@ -238,7 +238,7 @@ export default new Command({
                 i
             )
             await updateReviewerForAcceptance(originalSubmission, submissionData, i)
-            await sendDm(builder, guildData, reply, i)
+            await sendDm(builder, guildData, i, reply)
             await addCheckmarkReaction(submissionMsg)
         } else if (subCommand == 'land') {
             const sqm = options.getNumber('sqm')
@@ -272,7 +272,7 @@ export default new Command({
             await checkForRankup(builder, guildData, i)
             await addReviewToDb(reply, submissionData, 'sqm', sqm, originalSubmission, i)
             await updateReviewerForAcceptance(originalSubmission, submissionData, i)
-            await sendDm(builder, guildData, reply, i)
+            await sendDm(builder, guildData, i, reply)
             await addCheckmarkReaction(submissionMsg)
         } else if (subCommand == 'road') {
             const roadType = options.getNumber('roadtype')
@@ -314,7 +314,7 @@ export default new Command({
                 i
             )
             await updateReviewerForAcceptance(originalSubmission, submissionData, i)
-            await sendDm(builder, guildData, reply, i)
+            await sendDm(builder, guildData, i, reply)
             await addCheckmarkReaction(submissionMsg)
         }
     }

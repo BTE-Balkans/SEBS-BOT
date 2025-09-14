@@ -5,8 +5,9 @@ import { GuildInterface } from '../struct/Guild.js'
 async function sendDm(
     member: GuildMember,
     guildData: GuildInterface,
+    i: CommandInteraction,
     reply: string,
-    i: CommandInteraction
+    title: string = 'Build reviewed',
 ) {
     // after updating db, send dm (does this for edits and initial reviews)
     // send dm if user has it enabled
@@ -17,7 +18,7 @@ async function sendDm(
             .send({
                 embeds: [
                     {
-                        title: `${guildData.emoji} Build reviewed! ${guildData.emoji}`,
+                        title: `${guildData.emoji} ${title}! ${guildData.emoji}`,
                         description: `You ${reply}`,
                         footer: {
                             text: `Use the cmd '/preferences' to toggle build review DMs.`
