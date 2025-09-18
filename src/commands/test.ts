@@ -1,6 +1,8 @@
-import { ButtonStyle, MessageFlags } from "discord.js";
+import { ButtonStyle, Guild, MessageFlags } from "discord.js";
 import Command from "../struct/Command.js";
 import pagination, { PaginationButtonType } from "../utils/pagination.js";
+import Responses from "../utils/responses.js";
+import { GuildInterface } from "../struct/Guild.js";
 
 export default new Command({
     name: 'test',
@@ -25,6 +27,7 @@ export default new Command({
     ],
     async run(i, client) {
         let subCommand = i.options.getSubcommand()
+        const guildData : GuildInterface = client.guildsData.get(i.guild.id)
 
         if(subCommand == 'pager') {
             let pages = []
@@ -59,7 +62,7 @@ export default new Command({
         } else if(subCommand == 'getrole') {
             const roleID = i.options.getString('roleid')
             const role = await i.guild.roles?.fetch(roleID)
-            return i.editReply((role) ? `Role name: ${role.name}` : `Could not find role by ID: ${roleID}`)
+            return Responses.embed(i, (role) ? `**Role name:**\n ${role.name}` : `Could not find role by ID: ${roleID}`, guildData.accentColor)
         }
     }
 })

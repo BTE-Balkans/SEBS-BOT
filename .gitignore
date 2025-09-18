@@ -2,3 +2,4 @@
 config.ts
 configTest.ts
 /built
+/.vscode/ltex.disabledRules.en-US.txt

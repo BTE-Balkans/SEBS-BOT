@@ -5,3 +5,20 @@
     - Added admin role for command
     - Review role is now an array of roles
     - Submissions now must be first claimed before they are reviewed
+- 1.1.2
+    - Implemented base trial system 
+    - Added `/setup openapplicationmessage` sub-command
+    - Added `/task` command to assign/revoke tasks
+    - Added `/plot` command to manage plots
+    - Added `/accept` command to accept applicants/non-applicants as builders
+    - Added helper roles
+    - Plots are added via the plots channel as messages, which can be managed/assigned via the action buttons in said message
+    - Applying for a builder prompts and existing builder for their Minecraft username and registers them as one, else it creates a builder application for it
+    - Builder applications are a private threads in a common applications thread only channel
+    - Helpers assign tasks (plots) to applicants and review them
+    - Once an applicant reaches min 8 points, they can become a builder
+    - Builders can now tag other builder Discord tags, Minecraft usernames or add the number of other collaborators in the submissions message
+    - Submissions are now re-posted by the bot and updated with review(s)
+    - Submissions must be claimed by helpers before they are reviewed
+    - Each action upon a submission, e.g., claim, review, etc., forces a check on the collaborators, e.g., if a Minecraft username got associated with a Discord profile and updated the submission message accordingly
+    - The submission type can now be changed upon edit of a review of a submission

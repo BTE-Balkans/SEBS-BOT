@@ -1,17 +1,21 @@
 import Command from '../struct/Command.js'
-import Submission, { SubmissionInterface } from '../struct/Submission.js'
+import Submission, { BuildSize, SubmissionInterface, SubmissionType } from '../struct/Submission.js'
 import { globalArgs, landArgs, manyArgs, oneArgs, roadArgs } from '../review/options.js'
 import { checkForRankup } from '../review/checkForRankup.js'
 import { GuildMember, Message, TextChannel } from 'discord.js'
 import { checkIfRejected } from '../utils/checkForSubmission.js'
 import validateFeedback from '../utils/validateFeedback.js'
 import { addReviewToDb } from '../review/addReviewToDb.js'
-import { sendDm } from '../review/sendDm.js'
+import { sendDm, sendDmToCollaborators } from '../review/sendDm.js'
 import { addCheckmarkReaction } from '../review/addCheckmarkReaction.js'
 import { updateReviewerForAcceptance } from '../review/updateReviewer.js'
 import Responses from '../utils/responses.js'
 import { claimSubmission } from '../review/claimSubmission.js'
 import { addReviewingReaction } from '../review/addReviewingReaction.js'
+import { parseBuildMessage } from '../utils/parseBuildMessage.js'
+import { handleSubmissionMsg, updateSubmissionMsg } from '../review/handleSubmissionMsg.js'
+import { getPointsBreakdown } from '../utils/getPointsBreakdown.js'
+import { updateCollaborators } from '../utils/updateCollaborators.js'
 
 export default new Command({
     name: 'review',
@@ -65,30 +69,38 @@ export default new Command({
         try {
             submissionMsg = await submitChannel.messages.fetch(submissionId)
         } catch (e) {
-            return Responses.invalidSubmissionID(i, submissionId)
+            return Responses.invalidSubmissionID(i, submissionId, guildData.accentColor)
         }
 
-        if (submissionMsg.author.id == i.user.id) {
-            return Responses.submissionPermissionDenied(i)
+        //If the submission message is not from the bot, parse it (ex, if the bot was offline)
+        if(!submissionMsg.author.bot) {
+            let parsed = await handleSubmissionMsg(client, submissionMsg, guildData)
+            if(!parsed) 
+                return Responses.submissionRejected(i, 'The builders submission message was not formatted correctly', submissionMsg.url, guildData.accentColor)
+        }
+
+         //Get the original submission 
+        let originalSubmission : SubmissionInterface = await Submission.findOne({id: submissionId, guildId: i.guildId}).lean()
+
+        if (!client.test && originalSubmission.id == i.user.id) {
+            return Responses.submissionPermissionDenied(i, guildData.accentColor)
         }
 
         // Check if it already got declined / purged
-        const isRejected = await checkIfRejected(submissionId)
+        const isRejected = await checkIfRejected(submissionId, i.guildId)
 
         // Check if it was not yet claimed
-        const originalSubmission = await Submission.findById(submissionId).exec()
-
-        if(originalSubmission == null && subCommand != 'claim' && !isRejected) {
-            return Responses.submissionNotBeenClaimed(i)
-        } else if(originalSubmission != null && originalSubmission.reviewer != i.user.id && subCommand != 'claim') {
+        if(originalSubmission.reviewer == null && subCommand != 'claim' && !isRejected) {
+            return Responses.submissionNotBeenClaimed(i, guildData.accentColor)
+        } else if(originalSubmission.reviewer != null && originalSubmission.reviewer != i.user.id && subCommand != 'claim') {
             const reviewer = await client.users.fetch(originalSubmission.reviewer)
-            return Responses.submissionClaimedByAnotherReviewer(i, reviewer)
-        } else if (isEdit && originalSubmission != null && originalSubmission.feedback == null && !isRejected) {
-            return Responses.submissionHasNotBeenReviewed(i)
-        } else if (!isEdit && originalSubmission != null && originalSubmission.feedback != null) {
-            return Responses.submissionHasAlreadyBeenAccepted(i)
+            return Responses.submissionClaimedByAnotherReviewer(i, reviewer, guildData.accentColor)
+        } else if (isEdit && originalSubmission.reviewer != null && originalSubmission.feedback == null && !isRejected) {
+            return Responses.submissionHasNotBeenReviewed(i, guildData.accentColor)
+        } else if (!isEdit && originalSubmission.reviewer != null && originalSubmission.feedback != null) {
+            return Responses.submissionHasAlreadyBeenAccepted(i, guildData.accentColor)
         } else if (isRejected) {
-            return Responses.submissionHasAlreadyBeenDeclined(i)
+            return Responses.submissionHasAlreadyBeenDeclined(i, guildData.accentColor)
         }
 
         let feedback = null
@@ -97,19 +109,19 @@ export default new Command({
             feedback = validateFeedback(options.getString('feedback'))
         }
 
+        //If there are any collaborators of type Player, check if they have in the meantime linked their Minecraft username to their Discord account
+        if(originalSubmission.collaborators) {
+            originalSubmission.collaborators = await updateCollaborators(originalSubmission.collaborators, guildData)
+        }
+
         // set variables shared by all subcommands
-        const builderId = submissionMsg.author.id
+        const builderId = originalSubmission.userId
         const bonus = options.getNumber('bonus') || 1
-        const collaborators = options.getInteger('collaborators') || 1
         let pointsTotal: number
         let submissionData: SubmissionInterface = {
-            _id: submissionId,
-            guildId: i.guild.id,
-            userId: builderId,
-            collaborators: collaborators,
+            ...originalSubmission,
             bonus: bonus,
             edit: isEdit,
-            submissionTime: submissionMsg.createdTimestamp,
             reviewTime: i.createdTimestamp,
             reviewer: i.user.id,
             feedback: feedback
@@ -126,55 +138,44 @@ export default new Command({
         // subcommands
         if(subCommand == 'claim') {
             //Check if the submission was already claimed
-            if(originalSubmission) {
-                if(originalSubmission.feedback == null && originalSubmission.reviewer != null) {
-                    return Responses.submissionAlreadyClaimed(i)
+            if(originalSubmission.reviewer != null) {
+                if(originalSubmission.feedback == null) {
+                    return Responses.submissionAlreadyClaimed(i, guildData.accentColor)
                 } else {
-                    return Responses.submissionHasAlreadyBeenAccepted(i)
+                    return Responses.submissionHasAlreadyBeenAccepted(i, guildData.accentColor)
                 }
             } else {
-                await claimSubmission(i.user, submissionData, i)
-                await sendDm(builder, guildData, i, `The [submission](${submissionMsg.url}) has been claimed by ${i.user}. Await review`, 'Build claimed')
+                await claimSubmission(i.user, submissionId, i, guildData)
+                await sendDm(builder, guildData, i, `The [submission](${submissionMsg.url}) review has been assigned to ${i.user}. Await review.`, 'Build claimed')
+                await sendDmToCollaborators(submissionData, guildData, i, `The review of the [submission](${submissionMsg.url}) you contributed has been assigned to ${i.user}. Await review.`, 'Build claimed')
+                await updateSubmissionMsg(client, submissionMsg, submissionData, guildData, i.guild, i.user)
                 await addReviewingReaction(submissionMsg)
             }
         } else if (subCommand == 'one') {
-            // set subcmd-specific variables
+            // set sub-command specific variables
             const size = options.getInteger('size')
             const quality = options.getNumber('quality')
             const complexity = options.getNumber('complexity')
-            let sizeName: string
-            pointsTotal = (size * quality * complexity * bonus) / collaborators
+            let sizeName = BuildSize[size]
+            pointsTotal = (size * quality * complexity * bonus) / submissionData.collaboratorsCount
             submissionData = {
                 ...submissionData,
-                submissionType: 'ONE',
+                submissionType: SubmissionType.ONE,
                 size: size,
                 quality: quality,
                 complexity: complexity,
-                pointsTotal: pointsTotal
+                pointsTotal: pointsTotal,
+                buildCount : 1
             }
-
-            switch (size) {
-                case 2:
-                    sizeName = 'small'
-                    break
-                case 5:
-                    sizeName = 'medium'
-                    break
-                case 10:
-                    sizeName = 'large'
-                    break
-                case 20:
-                    sizeName = 'monumental'
-                    break
-            }
-            const reply = `gained **${pointsTotal} points!!!**
+            let reply = `gained **${pointsTotal} points!!!**
             
-            *__Points breakdown:__*
-            Building type: ${sizeName}
-            Quality multiplier: x${quality}
-            Complexity multiplier: x${complexity}
-            Bonuses: x${bonus}
-            Collaborators: ${collaborators}
+            *__Points breakdown:__*\n`
+
+            let pointsBreakdown = getPointsBreakdown(submissionData)
+            for(let pointBreakdown of pointsBreakdown)
+                reply += `${pointBreakdown.name}: ${pointBreakdown.value} \n`
+            
+            reply += `Collaborators: ${submissionData.collaboratorsCount}
             [Link](${submissionMsg.url})
             
             __Feedback:__ \`${feedback}\``
@@ -187,11 +188,14 @@ export default new Command({
                 'buildingCount',
                 1,
                 originalSubmission,
-                i
+                i,
+                guildData
             )
             await checkForRankup(builder, guildData, i)
             await updateReviewerForAcceptance(originalSubmission, submissionData, i)
             await sendDm(builder, guildData, i, reply)
+            await sendDmToCollaborators(submissionData, guildData, i, reply)
+            await updateSubmissionMsg(client, submissionMsg, submissionData, guildData, i.guild, i.user)
             await addCheckmarkReaction(submissionMsg)
         } else if (subCommand == 'many') {
             const smallAmt = options.getInteger('smallamt')
@@ -204,7 +208,7 @@ export default new Command({
                     quality *
                     complexity *
                     bonus) /
-                collaborators
+                submissionData.collaboratorsCount
 
             submissionData = {
                 ...submissionData,
@@ -213,17 +217,19 @@ export default new Command({
                 largeAmt: largeAmt,
                 quality: quality,
                 complexity: complexity,
-                submissionType: 'MANY',
-                pointsTotal: pointsTotal
+                submissionType: SubmissionType.MANY,
+                pointsTotal: pointsTotal,
+                buildCount : smallAmt + mediumAmt + largeAmt
             }
-            const reply = `gained **${pointsTotal} points!!!**
+            let reply = `gained **${pointsTotal} points!!!**
             
-            *__Points breakdown:__*
-            Number of buildings (S/M/L): ${smallAmt}/${mediumAmt}/${largeAmt}
-            Quality multiplier: x${quality}
-            Complexity multiplier: x${complexity}
-            Bonuses: x${bonus}
-            [Link](${submissionMsg.url})
+            *__Points breakdown:__*\n`
+
+            let pointsBreakdown = getPointsBreakdown(submissionData)
+            for(let pointBreakdown of pointsBreakdown)
+                reply += `${pointBreakdown.name}: ${pointBreakdown.value} \n`
+
+            reply += `[Link](${submissionMsg.url})
             
             __Feedback:__ \`${feedback}\``
 
@@ -235,10 +241,13 @@ export default new Command({
                 'buildingCount',
                 smallAmt + mediumAmt + largeAmt,
                 originalSubmission,
-                i
+                i,
+                guildData
             )
             await updateReviewerForAcceptance(originalSubmission, submissionData, i)
             await sendDm(builder, guildData, i, reply)
+            await sendDmToCollaborators(submissionData, guildData, i, reply)
+            await updateSubmissionMsg(client, submissionMsg, submissionData, guildData, i.guild, i.user)
             await addCheckmarkReaction(submissionMsg)
         } else if (subCommand == 'land') {
             const sqm = options.getNumber('sqm')
@@ -246,59 +255,62 @@ export default new Command({
             const quality = options.getNumber('quality')
             const complexity = options.getNumber('complexity')
             pointsTotal =
-                (sqm * landtype * complexity * quality * bonus) / 100000 / collaborators
+                (sqm * landtype * complexity * quality * bonus) / 100000 / submissionData.collaboratorsCount
             submissionData = {
                 ...submissionData,
                 sqm: sqm,
                 complexity: complexity,
-                submissionType: 'LAND',
+                submissionType: SubmissionType.LAND,
                 quality: quality,
                 pointsTotal: pointsTotal
             }
 
-            const reply = `gained **${pointsTotal} points!!!**
+            let reply = `gained **${pointsTotal} points!!!**
             
-            *__Points breakdown:__*
-            Land area: ${sqm} sqm
-            Quality multiplier: x${quality}
-            Complexity multiplier: x${complexity}
-            Bonuses: x${bonus}
-            Collaborators: ${collaborators}
+            *__Points breakdown:__*\n`
+
+            let pointsBreakdown = getPointsBreakdown(submissionData)
+            for(let pointBreakdown of pointsBreakdown)
+                reply += `${pointBreakdown.name}: ${pointBreakdown.value} \n`
+
+            reply += `Collaborators: ${submissionData.collaboratorsCount}
             [Link](${submissionMsg.url})
             
             __Feedback:__ \`${feedback}\``
 
             // do review things
             await checkForRankup(builder, guildData, i)
-            await addReviewToDb(reply, submissionData, 'sqm', sqm, originalSubmission, i)
+            await addReviewToDb(reply, submissionData, 'sqm', sqm, originalSubmission, i, guildData)
             await updateReviewerForAcceptance(originalSubmission, submissionData, i)
             await sendDm(builder, guildData, i, reply)
+            await sendDmToCollaborators(submissionData, guildData, i, reply)
+            await updateSubmissionMsg(client, submissionMsg, submissionData, guildData, i.guild, i.user)
             await addCheckmarkReaction(submissionMsg)
         } else if (subCommand == 'road') {
             const roadType = options.getNumber('roadtype')
             const roadKMs = options.getNumber('distance')
             const quality = options.getNumber('quality')
             const complexity = options.getNumber('complexity')
-            pointsTotal = (roadType * roadKMs * complexity * quality * bonus) / collaborators
+            pointsTotal = (roadType * roadKMs * complexity * quality * bonus) / submissionData.collaboratorsCount
             submissionData = {
                 ...submissionData,
                 roadType: roadType,
                 roadKMs: roadKMs,
                 complexity: complexity,
-                submissionType: 'ROAD',
+                submissionType: SubmissionType.ROAD,
                 quality: quality,
                 pointsTotal: pointsTotal
             }
 
-            const reply = `gained **${pointsTotal} points!!!**
+            let reply = `gained **${pointsTotal} points!!!**
             
-            *__Points breakdown:__*
-            Road type: ${roadType}
-            Quality multiplier: x${quality}
-            Complexity multiplier: x${complexity}
-            Distance: ${roadKMs} km
-            Bonuses: x${bonus}
-            Collaborators: ${collaborators}
+            *__Points breakdown:__*\n`
+
+            let pointsBreakdown = getPointsBreakdown(submissionData)
+            for(let pointBreakdown of pointsBreakdown)
+                reply += `${pointBreakdown.name}: ${pointBreakdown.value} \n`
+
+            reply += `Collaborators: ${submissionData.collaboratorsCount}
             [Link](${submissionMsg.url})
             
             Feedback: \`${feedback}\``
@@ -311,10 +323,13 @@ export default new Command({
                 'roadKMs',
                 roadKMs,
                 originalSubmission,
-                i
+                i,
+                guildData
             )
             await updateReviewerForAcceptance(originalSubmission, submissionData, i)
             await sendDm(builder, guildData, i, reply)
+            await sendDmToCollaborators(submissionData, guildData, i, reply)
+            await updateSubmissionMsg(client, submissionMsg, submissionData, guildData, i.guild, i.user)
             await addCheckmarkReaction(submissionMsg)
         }
     }

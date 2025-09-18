@@ -11,6 +11,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 
 class Bot extends Client {
     test: boolean
+    guildProductionID: string
     commands: Collection<string, Command>
     guildsData: Collection<string, GuildInterface>
     admin: string
@@ -22,17 +23,20 @@ class Bot extends Client {
                 IntentsBitField.Flags.GuildMembers,
                 IntentsBitField.Flags.GuildMessages,
                 IntentsBitField.Flags.GuildMessageReactions,
-                IntentsBitField.Flags.DirectMessages
+                IntentsBitField.Flags.DirectMessages,
+                IntentsBitField.Flags.MessageContent
             ]
         })
         this.test = config.test
+        this.guildProductionID = config.discordServerID
         this.commands = new Collection()
         this.guildsData = new Collection()
         this.admin = config.admin
     }
 
     async loadDatabase() {
-        mongoose.set('strictQuery', true)
+        mongoose.set('strictQuery', false)
+        //mongoose.set('debug', true)
         await mongoose.connect(config.mongoURI)
     }
 

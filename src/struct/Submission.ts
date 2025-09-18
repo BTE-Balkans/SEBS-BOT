@@ -3,16 +3,17 @@ import mongoose from 'mongoose'
 const Submission = mongoose.model<SubmissionInterface>(
     'Submission',
     new mongoose.Schema<SubmissionInterface>({
-        _id: {
-            type: String,
-            required: true,
-            minlength: 18
-        },
+        id: String,
         guildId: String,
-        submissionType: String,
+        index: Number,
+        plotId: String,
+        submissionType: Number,
         userId: String,
         pointsTotal: Number,
-        collaborators: Number,
+        collaborators: [{type: {type: Number, enum: [0, 1], default: 0}, value: String}],
+        collaboratorsCount: Number,
+        buildImages: [String], //Links to build images
+        buildCount: Number,
         bonus: Number,
         edit: Boolean,
         size: Number,
@@ -32,14 +33,19 @@ const Submission = mongoose.model<SubmissionInterface>(
 )
 
 export interface SubmissionInterface {
-    _id: string
+    id: string
     guildId: string
+    index: number,
+    plotId?: string
     userId: string
     pointsTotal?: number
     complexity?: number
     quality?: number
-    submissionType?: string
-    collaborators?: number
+    submissionType?: SubmissionType
+    collaborators?: CollaboratorInterface[]
+    collaboratorsCount?: number
+    buildImages: string[]
+    buildCount: number,
     bonus?: number
     edit?: boolean
     size?: number
@@ -50,9 +56,33 @@ export interface SubmissionInterface {
     roadType?: number
     roadKMs?: number
     submissionTime: number
-    reviewTime: number
+    reviewTime?: number
     reviewer: string
-    feedback: string
+    feedback?: string
+}
+
+export interface CollaboratorInterface {
+    type: ParticipantType,
+    value: string
+}
+
+export enum ParticipantType {
+    Member = 0, //Value is ID for member
+    Player = 1, //Value is Minecraft username of participant
+}
+
+export enum SubmissionType {
+    ONE = 0,
+    MANY = 1,
+    LAND = 2,
+    ROAD = 3
+}
+
+export enum BuildSize {
+    small = 2,
+    medium = 5,
+    large = 10,
+    monumental = 20
 }
 
 export default Submission

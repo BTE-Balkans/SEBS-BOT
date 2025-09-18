@@ -14,6 +14,7 @@ export default new Command({
     }],
     async run(i, client) {
         const options = i.options
+        const guildData = client.guildsData.get(i.guildId)
         const otherServer = options.getString('serverid')
 
         let server = i.guild.id
@@ -60,6 +61,6 @@ export default new Command({
             numBuilds = buildings[0].sumBuilds
         }
 
-        return Responses.serverCompletedBuilds(i, numBuilds)
+        return Responses.serverCompletedBuilds(i, numBuilds, guildData.accentColor)
     }
 })

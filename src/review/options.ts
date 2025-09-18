@@ -1,4 +1,5 @@
 import { CommandArg } from '../struct/Command.js'
+import { ParticipantType } from '../struct/Submission.js'
 
 // subcommand options
 const globalArgs: CommandArg[] = [
@@ -13,12 +14,6 @@ const globalArgs: CommandArg[] = [
         description: 'feedback for submission (1700 chars max)',
         required: true,
         optionType: 'string'
-    },
-    {
-        name: 'collaborators',
-        description: 'Number of collaborators',
-        required: false,
-        optionType: 'integer'
     },
     {
         name: 'bonus',
@@ -203,4 +198,19 @@ const roadArgs: CommandArg[] = [
     }
 ]
 
-export { globalArgs, oneArgs, manyArgs, landArgs, roadArgs }
+function submissionBuildersMatch(id: string) {
+    return {
+        $or: [
+            { userId: id },
+            { collaborators: {
+                    $elemMatch: {
+                        type: ParticipantType.Member,
+                        value: id
+                    }
+                }
+            }
+        ]
+    }
+}
+
+export { globalArgs, oneArgs, manyArgs, landArgs, roadArgs, submissionBuildersMatch }

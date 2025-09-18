@@ -1,5 +1,10 @@
+import { setServers } from 'node:dns/promises'
 import Bot from './struct/Client.js'
 import config from '../config.js'
+
+//FIX querySrv ECONNREFUSED error in mongoose
+//https://alexbevi.com/blog/2023/11/13/querysrv-errors-when-connecting-to-mongodb-atlas/
+setServers(["1.1.1.1", "8.8.8.8"])
 
 async function start() {
     const client = new Bot()

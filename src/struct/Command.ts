@@ -7,6 +7,7 @@ class Command {
     description: string
     reviewer: boolean
     admin: boolean
+    helper: boolean
     args?: CommandArg[]
     subCommands?: SubCommandProperties[]
     cooldown?: number
@@ -17,6 +18,7 @@ class Command {
         this.description = properties.description
         this.reviewer = properties.reviewer
         this.admin = properties.admin
+        this.helper = properties.helper
         this.args = properties.args
         this.subCommands = properties.subCommands
         this.cooldown = properties.cooldown || 500
@@ -41,7 +43,7 @@ class Command {
             })
         }
 
-        function addOptions(options : CommandArg[], builder) {
+        function addOptions(options : CommandArg[], builder : SlashCommandBuilder | SlashCommandSubcommandBuilder) {
             options.forEach((opt) => {
                 let choices = []
                 if (Array.isArray(opt.choices)) {
@@ -86,6 +88,13 @@ class Command {
                             .setDescription(opt.description)
                             .setRequired(opt.required)
                     )
+                } else if(opt.optionType == 'attachment') {
+                    builder.addAttachmentOption((option) =>
+                        option
+                            .setName(opt.name)
+                            .setDescription(opt.description)
+                            .setRequired(opt.required)
+                    )
                 }
             })
         }
@@ -119,6 +128,7 @@ interface SubCommandProperties {
 interface CommandProperties extends SubCommandProperties {
     reviewer?: boolean
     admin?: boolean
+    helper? : boolean
     subCommands?: SubCommandProperties[]
     cooldown?: number
     run: (i: ChatInputCommandInteraction, client: Bot) => void

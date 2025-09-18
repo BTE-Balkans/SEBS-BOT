@@ -86,7 +86,7 @@ export default new Command({
                         { $toDouble: '$quality' },
                         { $toDouble: '$bonus' }
                     ]
-                }, { $toLong: '$collaborators' }]
+                }, { $toLong: '$collaboratorsCount' }]
             }, landPoints]
         }
 

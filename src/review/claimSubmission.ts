@@ -1,42 +1,32 @@
-import { CommandInteraction, User } from "discord.js";
+import { CommandInteraction, Guild, User } from "discord.js";
 import Submission, { SubmissionInterface } from "../struct/Submission.js";
 import Responses from "../utils/responses.js";
 import Builder from "../struct/Builder.js";
+import { insertBuilder } from "./insertBuilder.js";
+import { GuildInterface } from "../struct/Guild.js";
 
 /**
  * Add submission to db to claim it
  * @param claimer name of claimer to send in the claim embed
- * @param submissionData 
+ * @param submissionId The id of the submission 
  * @param i the review command interaction
+ * @param guildData Guild data
  */
 async function claimSubmission(
     claimer: User,
-    submissionData: SubmissionInterface,
-    i: CommandInteraction
+    submissionId: string,
+    i: CommandInteraction,
+    guildData: GuildInterface
 ) {
     try {
-        // insert submission into db
-        await Submission.updateOne({_id: submissionData._id}, submissionData, {
-            upsert: true
-        })
+        // claim submission
+        await Submission.updateOne({id: submissionId, guildId: i.guildId}, {$set: { 'reviewer': claimer.id }})
 
-        // insert builder if not yet added
-        const res = await Builder.updateOne({ id: submissionData.userId, guildId: i.guild.id}, {}, {upsert: true})
-        if(res.upsertedId){
-            await Builder.updateOne({ id: submissionData.userId, guildId: i.guild.id}, { 
-                $set: {
-                    dm: true
-                }
-            }, {upsert: true})
-        }
-
-        return i.editReply(Responses.createEmbed(
-            `Submission successfully claimed by ${claimer}.`
-        ))
+        return Responses.embed(i, `**Submission successfully claimed by ${claimer}.**`, guildData.accentColor)
 
     } catch(err) {
         console.log(err)
-        return Responses.errorGeneric(i, err)
+        return Responses.errorGeneric(i, err, guildData.accentColor)
     }
 }
 

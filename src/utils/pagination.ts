@@ -1,5 +1,6 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChatInputCommandInteraction, ComponentType, DiscordAPIError, embedLength, InteractionEditReplyOptions, Message, MessageFlags, MessagePayload, User } from "discord.js";
 import Bot from "../struct/Client.js";
+import Responses from "./responses.js";
 
 export default async function(properties: PaginationOptions) {
     try {
@@ -68,7 +69,7 @@ export default async function(properties: PaginationOptions) {
 
         collector.on('collect', async c => {
             if(!properties.ephemeral && c.user.id !== author.id) {
-                return await c.reply({content: `This action is only allowed to **${author.username}**`, flags: MessageFlags.Ephemeral})
+                return await c.reply({embeds: [Responses.createEmbed(`This action is only allowed to **${author.username}**`).toJSON()], flags: MessageFlags.Ephemeral})
             }
 
             await c.deferUpdate()

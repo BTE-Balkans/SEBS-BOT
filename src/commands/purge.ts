@@ -1,11 +1,12 @@
 import Command from '../struct/Command.js'
 import { Message, TextChannel } from 'discord.js'
-import Submission from '../struct/Submission.js'
+import Submission, { ParticipantType } from '../struct/Submission.js'
 import Builder from '../struct/Builder.js'
 import areDmsEnabled from '../utils/areDmsEnabled.js'
 import { updateReviewerForPurge } from '../review/updateReviewer.js'
 import Rejection from '../struct/Rejection.js'
 import Responses from '../utils/responses.js'
+import { updateBuildersForPurge } from '../review/updateBuilder.js'
 
 export default new Command({
     name: 'purge',
@@ -21,9 +22,9 @@ export default new Command({
     ],
     async run(i, client) {
         const options = i.options
-        const guild = client.guildsData.get(i.guild.id)
+        const guildData = client.guildsData.get(i.guild.id)
         const submissionId = options.getString('submissionid')
-        const submitChannel = (await client.channels.fetch(guild.submitChannel)) as TextChannel
+        const submitChannel = (await client.channels.fetch(guildData.submitChannel)) as TextChannel
 
         let submissionMsg: Message
         let submissionLink = '(Link could not be generated)'
@@ -35,70 +36,39 @@ export default new Command({
         } catch (e) {
         }
 
-        const originalSubmission = await Submission.findById(submissionId).exec()
+        let originalSubmission = await Submission.findOne({id: submissionId, guildId: i.guildId})
 
         // Gate to ensure submission exists
         if (!originalSubmission) {
             const rejectedSubmission = await Rejection.findById(submissionId).exec()
             if (rejectedSubmission) {
-                return Responses.submissionHasAlreadyBeenDeclined(i)
+                return Responses.submissionHasAlreadyBeenDeclined(i, guildData.accentColor)
             }
 
-            return Responses.submissionNotFound(i)
-        }
-
-        // Gate to ensure submission belongs to the server that is trying to remove it
-        if (originalSubmission.guildId != i.guild.id) {
-            return Responses.purgePermissionDenied(i)
+            return Responses.submissionNotFound(i, guildData.accentColor)
         }
 
         // Delete submission from the database
         await originalSubmission.deleteOne().catch((err) => {
             console.log(err)
-            return Responses.errorGeneric(i, err)
+            return Responses.errorGeneric(i, err, guildData.accentColor)
         })
 
-        // Update user's points
-        const pointsIncrement = -originalSubmission.pointsTotal
-        const buildingCountIncrement = (() => {
-            switch (originalSubmission.submissionType) {
-                case 'MANY':
-                    return (
-                        -originalSubmission.smallAmt -
-                        originalSubmission.mediumAmt -
-                        originalSubmission.largeAmt
-                    )
-                case 'ONE':
-                    return -1
-                default:
-                    return 0
-            }
-        })()
-        const roadKMsIncrement = -originalSubmission.roadKMs || 0
-        const sqmIncrement = -originalSubmission.sqm || 0
-
-        await Builder.updateOne(
-            { id: originalSubmission.userId, guildId: i.guild.id },
-            {
-                $inc: {
-                    pointsTotal: pointsIncrement,
-                    buildingCount: buildingCountIncrement,
-                    roadKMs: roadKMsIncrement,
-                    sqm: sqmIncrement
-                }
-            },
-            { upsert: true }
-        ).exec()
+        // Update user's and collaborators points
+        await updateBuildersForPurge(originalSubmission)
 
         // Remove all bot reactions, then add a '❌' reaction
         if (submissionMsg) {
             submissionMsg.reactions.cache.forEach((reaction) => reaction.remove())
+            await submissionMsg.react('❌')
         }
+
+        //ToDo: Update submissionMsg to mark it as rejected
 
         // update reviewer
         await updateReviewerForPurge(originalSubmission)
 
-        const dmsEnabled = await areDmsEnabled(originalSubmission.userId)
+        const dmsEnabled = await areDmsEnabled(originalSubmission.userId, guildData.id)
 
         // Send a DM to the user if user wants dms
         try {
@@ -106,17 +76,19 @@ export default new Command({
                 const builder = submissionMsg.author
                 const dm = await builder.createDM()
 
-                await dm.send(Responses.createEmbed(
+                await dm.send({embeds: [Responses.createEmbed(
                     `__${submissionLink}__`,
+                    guildData.accentColor,
                     `Your recent build submission has been removed.`
-                )).catch((err) => {
-                    return Responses.errorDirectMessaging(i, err)
+                 ).toJSON()
+                ]}).catch((err) => {
+                    return Responses.errorDirectMessaging(i, err, guildData.accentColor)
                 })
             }
         } catch (e) {
         }
 
 
-        await Responses.submissionPurged(i, submissionLink)
+        await Responses.submissionPurged(i, submissionLink, guildData.accentColor)
     }
 })

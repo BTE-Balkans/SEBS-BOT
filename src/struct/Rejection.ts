@@ -3,11 +3,7 @@ import mongoose from 'mongoose'
 const Rejection = mongoose.model<RejectionInterface>(
     'Rejection',
     new mongoose.Schema<RejectionInterface>({
-        _id: {
-            type: String,
-            required: true,
-            minlength: 18
-        },
+        id: String,
         guildId: String,
         userId: String,
         submissionTime: Number,
@@ -18,7 +14,7 @@ const Rejection = mongoose.model<RejectionInterface>(
 )
 
 export interface RejectionInterface {
-    _id: string
+    id: string
     guildId: string
     userId: string
     submissionTime: number

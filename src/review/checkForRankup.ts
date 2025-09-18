@@ -3,6 +3,8 @@ import { GuildInterface } from '../struct/Guild.js'
 import Submission from '../struct/Submission.js'
 import Builder from '../struct/Builder.js'
 import { title } from 'process'
+import Responses from '../utils/responses.js'
+import { submissionBuildersMatch } from './options.js'
 
 // function for sending dm and upgrading role, same for all rankups
 async function doRankup(
@@ -11,16 +13,14 @@ async function doRankup(
     name: string,
     msg: string,
     roleId: string,
-    i: CommandInteraction
+    i: CommandInteraction,
+    guild: GuildInterface
 ) {
     // send rankup DM
-    const embed = {
-        title: `NEW RANK ACHIEVED! You're now a ${emoji} ${emoji} **${name}!** ${emoji} ${emoji}`,
-        description: msg
-    }
+    const embed = Responses.createEmbed(msg, guild.accentColor, `NEW RANK ACHIEVED! You're now a ${emoji} ${emoji} **${name}!** ${emoji} ${emoji}`)
 
     const dm = await member.createDM()
-    await dm.send({ embeds: [embed] }).catch((err) => {
+    await dm.send({ embeds: [embed.toJSON()] }).catch((err) => {
         return `${member} has dms turned off or something went wrong while sending the dm! ${err}`
     })
 
@@ -62,7 +62,8 @@ async function checkForRankup(
             guild.rank2.name,
             `__As a ${guild.rank2.name}, you are now qualified to build **Medium Builds!**__\n\nExamples: Department stores, strip malls, parking garages, marinas, schools, mid-rise apartments, small airports/harbors, etc!`,
             guild.rank2.id,
-            i
+            i,
+            guild
         )
     } else if (
         pointsTotal >= guild.rank3.points &&
@@ -73,14 +74,14 @@ async function checkForRankup(
         const userPoints = await Submission.aggregate([
             {
                 $match: {
-                    userId: member.id,
+                    ...submissionBuildersMatch(member.id),
                     guildId: guild.id,
                     quality: { $gte: 1.5 }
                 }
             },
             {
                 $group: {
-                    _id: '$userId',
+                    _id: null,
                     pointsTotal: {
                         $sum: {
                             $cond: [
@@ -118,7 +119,8 @@ async function checkForRankup(
                 guild.rank3.name,
                 `__As a ${guild.rank3.name}, you are now qualified to build **Large Builds!**__\n\nExamples: Skyscrapers, high-rises, convention centers, universities, large airports/harbours, etc!`,
                 guild.rank3.id,
-                i
+                i,
+                guild
             )
         }
     } else if (
@@ -130,7 +132,7 @@ async function checkForRankup(
         const userPoints = await Submission.aggregate([
             {
                 $match: {
-                    userId: member.id,
+                    ...submissionBuildersMatch(member.id),
                     guildId: guild.id,
                     quality: { $gte: 1.5 }
                 }
@@ -173,14 +175,15 @@ async function checkForRankup(
                 guild.rank4.name,
                 `__As a ${guild.rank4.name}, you are now qualified to build **Monumental Builds!**__\n\nExamples: Stadiums, amusement parks, megamalls, large medical or educational complexes, etc!`,
                 guild.rank4.id,
-                i
+                i,
+                guild
             )
         }
     } else if (pointsTotal >= guild.rank5.points && !member.roles.cache.get(guild.rank5.id)) {
         const userPoints = await Submission.aggregate([
             {
                 $match: {
-                    userId: member.id,
+                    ...submissionBuildersMatch(member.id),
                     guildId: guild.id,
                     quality: { $gte: 2 }
                 }
@@ -227,7 +230,8 @@ async function checkForRankup(
                 guild.rank5.name,
                 `As a ${guild.rank5.name}, you win ***extreme*** **bragging rights** because wtf how did you build so much <:what:743604228299292722>.`,
                 guild.rank5.id,
-                i
+                i,
+                guild
             )
         }
     }

@@ -1,3 +1,4 @@
+import { submissionBuildersMatch } from '../review/options.js'
 import Command from '../struct/Command.js'
 import Submission from '../struct/Submission.js'
 
@@ -6,7 +7,7 @@ const ARCHITECT_QUALITY_POINTS = 500
 const CHAMPION_QUALITY_POINTS = 1000
 
 export default new Command({
-    name: 'pogress',
+    name: 'progress',
     description: 'View your rankup progress.',
     args: [
         {
@@ -67,7 +68,7 @@ export default new Command({
                         { $toDouble: '$quality' },
                         { $toDouble: '$bonus' }
                     ]
-                }, { $toLong: '$collaborators' }]
+                }, { $toLong: '$collaboratorsCount' }]
             }, landPoints]
         }
 
@@ -79,19 +80,19 @@ export default new Command({
                     { $toDouble: '$quality' },
                     { $toDouble: '$bonus' }
                 ]
-            }, { $toLong: '$collaborators' }]
+            }, { $toLong: '$collaboratorsCount' }]
         }
 
         let pointsQuery = await Submission.aggregate([
             {
                 $match: {
                     guildId: i.guild.id,
-                    userId: user.id
+                    ...submissionBuildersMatch(user.id)
                 }
             },
             {
                 $group: {
-                    _id: '$userId',
+                    _id: null, //Group into one, as a submission may belong to a user via the userId prop via the collaborators array
                     points: { $sum: pointsTotal }
                 }
             }
@@ -125,7 +126,7 @@ export default new Command({
             {
                 $match: {
                     guildId: i.guild.id,
-                    userId: user.id,
+                    ...submissionBuildersMatch(user.id),
                     quality: { $gte: 1.5 } // TODO: ask if this is correct
                 }
             },
@@ -174,7 +175,7 @@ export default new Command({
             {
                 $match: {
                     guildId: i.guild.id,
-                    userId: user.id,
+                    ...submissionBuildersMatch(user.id),
                     quality: { $gte: 2 } // TODO: ask if this is correct
                 }
             },

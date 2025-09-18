@@ -1,5 +1,6 @@
+import { submissionBuildersMatch } from '../review/options.js'
 import Command from '../struct/Command.js'
-import Submission from '../struct/Submission.js'
+import Submission, { ParticipantType } from '../struct/Submission.js'
 import Responses from '../utils/responses.js'
 
 export default new Command({
@@ -20,21 +21,22 @@ export default new Command({
         }
     ],
     async run(i, client) {
-        let guild = client.guildsData.get(i.guild.id)
+        let guildData = client.guildsData.get(i.guild.id)
         const options = i.options
         const user = options.getUser('user') || i.user
         const global = options.getBoolean('global')
-        const userId = user.id
+        const userId : string = user.id
 
         let guildName: string
         let queryFilter = []
+        
 
         if (global) {
             guildName = 'All Build Teams'
-            guild = client.guildsData.get('global')
+            guildData = client.guildsData.get('global')
             queryFilter = [{
                 $match: {
-                    userId: userId
+                    ...submissionBuildersMatch(userId)
                 }
             }]
         } else {
@@ -44,7 +46,7 @@ export default new Command({
             queryFilter = [{
                 $match: {
                     guildId: i.guild.id,
-                    userId: user.id
+                    ...submissionBuildersMatch(userId)
                 }
             }]
         }
@@ -73,7 +75,7 @@ export default new Command({
                         { $toDouble: '$quality' },
                         { $toDouble: '$bonus' }
                     ]
-                }, { $toLong: '$collaborators' }]
+                }, { $toLong: '$collaboratorsCount' }]
             }, landPoints]
         }
 
@@ -81,7 +83,7 @@ export default new Command({
             ...queryFilter,
             {
                 $group: {
-                    _id: '$userId',
+                    _id: null,
                     points: { $sum: pointsTotal },
                     buildings: {
                         $sum: {
@@ -113,11 +115,11 @@ export default new Command({
         ])
 
         if (query.length == 0) {
-            return Responses.noCompletedBuilds(i, user.username)
+            return Responses.noCompletedBuilds(i, user.username, guildData.accentColor)
         }
 
         let data = query[0]
 
-        return Responses.points(i, user.id, data.points, data.buildings, data.landMetersSquare, data.roadsKMs, guild.emoji, guildName)
+        return Responses.points(i, user.id, data.points, data.buildings, data.landMetersSquare, data.roadsKMs, guildData.emoji, guildName, guildData.accentColor)
     }
 })

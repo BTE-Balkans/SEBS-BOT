@@ -1,9 +1,10 @@
 import Command from '../struct/Command.js'
-import Submission, { SubmissionInterface } from '../struct/Submission.js'
+import Submission, { BuildSize, SubmissionInterface, SubmissionType } from '../struct/Submission.js'
 import Rejection, { RejectionInterface } from '../struct/Rejection.js'
 import { Message, TextChannel } from 'discord.js'
 import { checkIfRejected } from '../utils/checkForSubmission.js'
 import Responses from '../utils/responses.js'
+import { getPointsBreakdown } from '../utils/getPointsBreakdown.js'
 
 export default new Command({
     name: 'see',
@@ -35,28 +36,23 @@ export default new Command({
         }
 
         // get submission from db
-        const submissionData: SubmissionInterface = await Submission.findById(submissionId).exec()
+        const submissionData: SubmissionInterface = await Submission.findOne({id: submissionId, guildId: i.guildId}).exec()
 
         // check if submission got rejected
-        const isRejected = await checkIfRejected(submissionId)
+        const isRejected = await checkIfRejected(submissionId, i.guildId)
 
         // return if submission is unreviewed (doesn't exist in rejections or submissions db)
         if (!submissionData && !isRejected) {
             return i.editReply(`This submission has not been reviewed yet.`)
         }
 
-        let sizeName = {
-            2: 'small',
-            5: 'medium',
-            10: 'large',
-            20: 'monumental'
-        }
+        let sizeName = BuildSize[submissionData.size]
 
         // if its rejection, get rejection from db
         if (isRejected) {
             const rejectionData: RejectionInterface = await Rejection.findById(submissionId).exec()
 
-            return i.editReply(Responses.createEmbed(`That submission was rejected. \n\nFeedback: \`${rejectionData.feedback}\``))
+            return Responses.embed(i, `That submission was rejected. \n\nFeedback: \`${rejectionData.feedback}\``, guildData.accentColor)
         }
 
         summary = `This submission earned **${submissionData.pointsTotal} points!!!**\n
@@ -65,27 +61,11 @@ export default new Command({
 
         // otherwise, it's a reviewed submission
         // write the summary depending on which type of submission it was
-        switch (submissionData.submissionType) {
-            case 'ONE':
-                // write the summary
-                summary += `Building type: ${sizeName[submissionData.size]}\n`
-                break
-            case 'MANY':
-                summary += `Number of buildings (S/M/L): ${submissionData.smallAmt}/${submissionData.mediumAmt}/${submissionData.largeAmt}\n`
-                break
-            case 'LAND':
-                summary += `Land area: ${submissionData.sqm} sqm\n`
-                break
-            case 'ROAD':
-                summary += `Road type: ${submissionData.roadType}
-                Distance: ${submissionData.roadKMs} km\n`
-                break
-        }
+        let pointsBreakdown = getPointsBreakdown(submissionData)
+        for(let pointBreakdown of pointsBreakdown)
+            summary += `${pointBreakdown.name}: ${pointBreakdown.value} \n`
 
-        summary += `Quality multiplier: x${submissionData.quality}
-        Complexity multiplier: x${submissionData.complexity}
-        Bonuses: x${submissionData.bonus}
-        Collaborators: ${submissionData.collaborators}
+        summary += `Collaborators: ${submissionData.collaboratorsCount}
         ${submissionLink}
         __Feedback:__ \`${submissionData.feedback}\``
 

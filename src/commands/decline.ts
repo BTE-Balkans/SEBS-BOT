@@ -8,6 +8,8 @@ import { updateReviewerForRejection } from '../review/updateReviewer.js'
 import Reviewer from '../struct/Reviewer.js'
 import Responses from '../utils/responses.js'
 import submissionRejected = Responses.submissionRejected
+import { getSubmissionClaimer } from '../review/getSubmissionClaimer.js'
+import Submission from '../struct/Submission.js'
 
 export default new Command({
     name: 'decline',
@@ -29,29 +31,38 @@ export default new Command({
     ],
     async run(i, client) {
         const options = i.options
-        const guild = client.guildsData.get(i.guild.id)
+        const guildData = client.guildsData.get(i.guild.id)
         const submissionId = options.getString('submissionid')
         const feedback = validateFeedback(options.getString('feedback'))
-        const submitChannel = (await client.channels.fetch(guild.submitChannel)) as TextChannel
+        const submitChannel = (await client.channels.fetch(guildData.submitChannel)) as TextChannel
 
         let submissionMsg: Message
 
         try {
             submissionMsg = await submitChannel.messages.fetch(submissionId)
         } catch (e) {
-            return Responses.invalidSubmissionID(i, submissionId)
+            return Responses.invalidSubmissionID(i, submissionId, guildData.accentColor)
         }
 
         // Check if it already got graded
-        const isAccepted = await checkIfAccepted(submissionMsg.id)
+        const isAccepted = await checkIfAccepted(submissionMsg.id, i.guildId)
         if (isAccepted) {
-            return Responses.submissionHasAlreadyBeenAccepted(i)
+            return Responses.submissionHasAlreadyBeenAccepted(i, guildData.accentColor)
         }
 
         // Check if it already got declined / purged
-        const isRejected = await checkIfRejected(submissionMsg.id)
+        const isRejected = await checkIfRejected(submissionMsg.id, i.guildId)
         if (isRejected) {
-            return Responses.submissionHasAlreadyBeenDeclined(i)
+            return Responses.submissionHasAlreadyBeenDeclined(i, guildData.accentColor)
+        }
+
+        // Check if the interaction user is the reviewer that claimed the submission
+        const claimer = await getSubmissionClaimer(submissionMsg.id, i.guildId)
+        if(claimer && claimer != i.user.id) {
+            const claimerUser = await client.users.fetch(claimer)
+            return Responses.submissionClaimedByAnotherReviewer(i, claimerUser, guildData.accentColor)
+        }else if(!claimer) {
+            return Responses.submissionNotBeenClaimed(i, guildData.accentColor)
         }
 
         // check if reviewer has reviewed yet or not. new reviewers cannot decline as a first review
@@ -83,24 +94,28 @@ export default new Command({
             reviewer = await Reviewer.findOne({ id: i.user.id, guildId: i.guild.id }).exec()
         }
 
+        let submission = await Submission.findOne({id: submissionMsg.id, guildId: i.guildId})
+
         // dm builder
-        const builderId = submissionMsg.author.id
+        const builderId = submission.userId
         const builder = await client.users.fetch(builderId)
         const dm = await builder.createDM()
 
-        await dm.send(Responses.createEmbed(
+        await dm.send({embeds: [Responses.createEmbed(
             `__[Submission link](${submissionMsg.url})__
             Use this feedback to improve your build and resubmit it to gain points!
         
             \`${feedback}\``,
-            `Your recent build submission needs revision.`
-        )).catch((err) => {
-            return Responses.errorDirectMessaging(i, err)
+            guildData.accentColor,
+            `Your recent build submission needs revision.`,
+            ).toJSON()
+        ]}).catch((err) => {
+            return Responses.errorDirectMessaging(i, err, guildData.accentColor)
         })
 
         // record rejection in db
         const rejection = new Rejection({
-            _id: submissionId,
+            id: submissionId,
             guildId: i.guild.id,
             userId: builderId,
             submissionTime: submissionMsg.createdTimestamp,

@@ -1,4 +1,5 @@
-import { title } from "process"
+import { handleSubmissionMsg } from "../review/handleSubmissionMsg.js"
+import { handlePlotMsg } from "../trial/handlePlotMsg.js"
 
 export default async function execute(client, msg) {
     // ignore bot msgs
@@ -7,10 +8,9 @@ export default async function execute(client, msg) {
     }
 
     // production bot ignores test server, and test bot ignores other servers
-    // there's probably better way to write this statement, but I don't like thinking
     if (
-        (!client.test && msg.guild?.id == '1205901531044647032') ||
-        (client.test && msg.guild?.id != '1205901531044647032')
+        (!client.test && msg.guild?.id == client.guildProductionID) ||
+        (client.test && msg.guild?.id != client.guildProductionID)
     ) {
         return
     }
@@ -18,54 +18,16 @@ export default async function execute(client, msg) {
     const guild = client.guildsData.get(msg.guild.id)
     if (!guild) return
 
-    // if msg is not in build-submit channel, ignore
-    if (msg.channel.id != guild.submitChannel) {
-        return
+    // if msg is not in build-submit or plots channel, ignore
+    if (msg.channel.id == guild.submitChannel) {
+        return await handleSubmissionMsg(client, msg, guild)
+    } else if(msg.channel.id == guild.plotsChannel) {
+        return await handlePlotMsg(client, msg, guild)
     }
 
-    // otherwise, check each build-submit msg
-    // check for images
-    if (msg.attachments.size === 0) {
-        return reject(client, msg, guild, 'NO IMAGE FOUND')
-    }
-
-    // split submission msg by each new line
-    const lines = msg.content.split('\n')
-
-    const coordsRegex =
-        /^(\s*[(]?[-+]?([1-8]+\d\.(\d+)?|90(\.0+))\xb0?,?\s+[-+]?(180(\.0+)?|((1[0-7]\d)|([1-9]+\d))\.(\d+))\xb0?\s*)|(\s*(\d{1,3})\s*(?:°|d|º| |g|o)\s*([0-6]?\d)\s*(?:'|m| |´|’|′))/
-
-    let coords = false
-    let count = false
-
-    // check content of each line of msg to see if one of them contains valid coordinates
-    // msg could contain multiple lines due to notes, etc., so that's why check each line
-    lines.forEach((line) => {
-        line = line.replace(/#/g, '')
-        if (coordsRegex.test(line) === true) {
-            coords = true
-        }
-    })
-
-    // reject submission if it doesn't include coords
-    if (!coords) {
-        reject(client, msg, guild, 'INVALID OR UNRECOGNIZED COORDINATES')
-    }
+    return
 }
 
-// helper func that sends the rejection msg and deletes the submission
-async function reject(client, msg, guild, reason) {
-    const embed = {
-        title: `INCORRECT SUBMISSION FORMAT: ${reason}`,
-        description: `**[Correct format:](${guild.formattingMsg})**\n[Build count]\n[Coordinates]\n[Location name] (OPTIONAL)\n[Image(s) of build]\n\n__The entire submission must be in ONE MESSAGE!__\nView [pinned message](${guild.formattingMsg}) for more details.`
-    }
 
-    const rejectionMsg = await msg.channel.send({ embeds: [embed] })
-
-    setTimeout(() => {
-        rejectionMsg.delete().catch(() => {})
-        msg.delete().catch(() => {})
-    }, 30000)
-}
 
 export { execute }
