@@ -13,15 +13,15 @@ The bot uses the following intents:
 - Direct messages (Direct messaging to users)
 
 ## Features
-The bot incorporates two systems, the trial/applicant part and the builder submissions/rank-up part.
+The bot incorporates two systems, the trial/application part and the builder submissions/rank-up part.
 ### Trial system
-The trial system enables user to become full-fledged builders using builder applications. Users apply for the builder application via a fixed button, which includes a short survey.  
-The survey includes a confirmation of a legal copy of Minecraft, how they rate themselves as builders, their Minecraft username, and which helper they want to handle their builder application. Once submitted the user is marked as an applicant.
+The trial system enables user to become full-fledged builders using builder applications. Users apply to become a full builder via a fixed button, which includes a short survey.  
+The survey includes a confirmation of a legal copy of Minecraft, how they rate themselves as builders, their Minecraft username, and which helper they want to handle their builder application. Once submitted the user is marked as a junior builder.
 
-Each builder application is a private thread where an applicant chosen helper gives task/'s to the applicant for them to complete in an open timeframe. The tasks are chosen randomly or selectively based on how the applicant rates themselves as a builder.  
-The applicant is able to, in this time period, close their application, which marks the given task a free again and archives the thread. Once closed, they can reopen the application by applying for a new builder application, where at that point, the builder application is treated as reopened. Once the helper reviews the completed tasks, they are either given more tasks or promoted to rank 1 (based on the Discord role associated with the rank) once they gater the min 8 points.
+Each builder application is a private thread where the chosen helper gives task/'s to the junior builder for them to complete in an open timeframe. The tasks are chosen either randomly or selectively based on how the builder rated themselves initially.  
+The junior builder is able to, in this time period, close their application, which marks the given task a free again and archives the thread. Once closed, they can reopen the application by applying to become a full builder again, where at that point, the builder application is treated as reopened. Once the helper reviews the completed tasks, they are either given more tasks or promoted to rank 1 (based on the Discord role associated with the rank) once they gater min 8 points.
 
-When promoted, the now builder can now mark their application as closed, which archives and locks the thread. Else the thread gets auto-archived after a week. This enables builders further help from the chosen helper, by simply posting a message and tagging the helper in the private thread
+When promoted, the application of the now full builder gets marked as closed, but the builder thread gets auto-archived after a week. This enables further help from the chosen helper, by simply tagging the helper in the private builder thread
 
 > **Note**: Helpers must first be setup for them to be shown in the builder application survey. See '/setup helpersetup' under [commands](./docs/COMMANDS.md) to find out more
 

@@ -6,7 +6,7 @@ const Builder = mongoose.model<BuilderInterface>(
         id: String,
         guildId: String,
         mcUsername: String,
-        rank: { type: Number, default: -1}, //-1 for applicant
+        rank: { type: Number, default: -1}, //-1 for junior builder
         dm: { type: Boolean, default: true },
         pointsTotal: Number,
         buildingCount: Number,
@@ -14,12 +14,10 @@ const Builder = mongoose.model<BuilderInterface>(
         contributions: Number,
         roadKMs: Number,
         sqm: Number,
-        applicantInfo: { 
-            initialSelfRate: Number, 
-            threadId: String, 
-            helperId: String,
-            closed: Boolean
-        }
+        initialSelfRate: Number, 
+        threadId: String, 
+        helperId: String,
+        applicationClosed: Boolean
     })
 )
 
@@ -35,14 +33,10 @@ export interface BuilderInterface {
     contributions: number
     roadKMs: number
     sqm: number
-    applicantInfo? : ApplicantInterface
-}
-
-export interface ApplicantInterface {
     initialSelfRate: number
     threadId: string
     helperId: string
-    closed: boolean
+    applicationClosed: boolean
 }
 
 export default Builder

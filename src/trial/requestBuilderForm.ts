@@ -5,34 +5,34 @@ import Responses from "../utils/responses.js";
 import { getBuilderRankFromRoles } from "../utils/getBuilderRankFromRoles.js";
 
 /**
- * Start the process for the non-builder to become a builder when the user clicks the open application button
+ * Start the process for the junior builder to become a full builder when the user clicks the apply button
  * @param i The button interaction that started the request
  * @param client The bot
- * @param reopenApplicant True if the application is currently closed, else false by default
+ * @param reopenApplication True if the application is currently closed, else false by default
  * @returns An message containing a continue button, asking the user if they have an legal copy of Minecraft, 
  * else containing what what went wrong, ex. if a users application is already open
  */
-async function requestApplicantForm(i: ButtonInteraction, client: Bot, reopenApplicant: boolean = false) {
+async function requestBuilderForm(i: ButtonInteraction, client: Bot, reopenApplication: boolean = false) {
     await i.deferReply({flags: MessageFlags.Ephemeral})
 
     //Get guild data
     const guildData = client.guildsData.get(i.guild.id)
     
-    //Check if user is already an applicant
+    //Check if user is already an junior builder
     const builder : BuilderInterface = await Builder.findOne({id: i.user.id, guildId: i.guildId}).lean()
-    if(builder?.applicantInfo?.threadId && !builder?.applicantInfo?.closed && builder?.rank == -1) {
+    if(builder?.threadId && !builder?.applicationClosed && builder?.rank == -1) {
         if(i.channel.isThread())  
             return Responses.embed(i, '**Builder application already open', guildData.accentColor)
         
-        //Get application channel
-        const applicantChannel = (await i.guild.channels.cache.get(guildData.applicantChannel)) as TextChannel
-        //Get the thread channel
-        const applicantThread = await applicantChannel.threads.fetch(builder.applicantInfo.threadId)
+        //Get builder channel
+        const builderChannel = (await i.guild.channels.cache.get(guildData.buildersChannel)) as TextChannel
+        //Get the builder thread
+        const builderThread = await builderChannel.threads.fetch(builder.threadId)
 
-        return Responses.embed(i,`**Builder application already open. Head to ${applicantThread}**`, guildData.accentColor)
-    } else if(builder?.applicantInfo?.closed && !reopenApplicant && builder?.rank == -1) {
+        return Responses.embed(i,`**Builder application already open. Head to ${builderThread}**`, guildData.accentColor)
+    } else if(builder?.applicationClosed && !reopenApplication && builder?.rank == -1) {
         const reopenButton = new ButtonBuilder()
-            .setCustomId('applicant_reopenapplicantion')
+            .setCustomId('builder_reopenapplication')
             .setLabel('Reopen')
             .setEmoji('🎟️') 
             .setStyle(ButtonStyle.Danger)
@@ -44,17 +44,17 @@ async function requestApplicantForm(i: ButtonInteraction, client: Bot, reopenApp
 
     //Get guild member from user
     const member = await i.guild.members.fetch(i.user.id)
-    //If the member rank is greater than -1, the member already has a builder role
+    //If the member rank is greater than -1, the member already has a full builder role
     const hasBuilderRole = getBuilderRankFromRoles(member, guildData) > -1
-    //Check if member already has a builder role, is registered as a builder and has their Minecraft username set
-    //Else either register them as applicant or as builder if they already have a builder role, but they don't ex their MC username set
+    //Check if member already has a builder role, is registered as a full builder and has their Minecraft username set
+    //Else either register them as junior or full builder if they already have a builder role, but they don't ex their MC username set
     if(hasBuilderRole && builder?.rank != -1 && builder?.mcUsername){
         return Responses.userAlreadyBuilder(i, guildData.accentColor)
     }
     
     
     const continueButton = new ButtonBuilder()
-        .setCustomId('applicationform_continue')
+        .setCustomId('builderform_continue')
         .setLabel('Continue')
         .setStyle(ButtonStyle.Success)
 
@@ -62,11 +62,11 @@ async function requestApplicantForm(i: ButtonInteraction, client: Bot, reopenApp
         .addComponents([continueButton])
 
     //Clear the `Reopen application` button from the original message
-    if(reopenApplicant &&  !i.ephemeral) {
+    if(reopenApplication &&  !i.ephemeral) {
         await i.message.edit({components: []})
     }
 
     return i.editReply({embeds: [Responses.createEmbed('**Do you have a legal copy of Minecraft?** \nYou must have a legal copy to continue', guildData.accentColor).toJSON()], components: [buttonRow.toJSON()]})
 }
 
-export { requestApplicantForm }
+export { requestBuilderForm }

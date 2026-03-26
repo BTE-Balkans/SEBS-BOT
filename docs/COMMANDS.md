@@ -8,15 +8,15 @@ Setup the bot for the server, admin only.
     - name: Name of server
     - emoji: Emoji of server, used in titles, ex - `💜 Submission Claimed 💜`
     - submitchannel: The ID of the channel that listens for build submissions
-    - plotschannel: The ID of the channel that listens for plots for applicants
+    - plotschannel: The ID of the channel that listens for plots for builders
     - formattingmsg: Link to a message that explains in which format a submission message must be in
     - accentColor: The color to use in embeds, containers, etc. in HEX format, ex. `#ac707e`
     - addroleasreviewer: The ID of a role set to be marked as a reviewer
     - removeroleasreviewer: The ID of a role set to be unmarked/removed as a reviewer
-- `/setup applicantwelcomemsg [visitservermsg] [welcomeimg] [guidelink]`  
+- `/setup applicationformatmsg [visitservermsg] [welcomeimg] [guidelink]`  
     - visitservermsg: The markdown text shown in the welcome msg, on how to visit the build server
     - welcomeimg: Link to an image shown in the welcome msg
-    - guidelink: Link to the build guide for the applicant
+    - guidelink: Link to the build guide for the junior builder
 - `/setup rank <level> [roleid] [points] [name]`
     - **level**: The level of the rank set to configure, from 1 to 5
     - roleid: The ID of the role, corresponding to this rank level
@@ -118,11 +118,11 @@ Set user preferences, public.
     - **username**: Minecraft username
 
 ### 12. Task command
-Manage the applicant plots. **Must be run inside the applicant thread channel.**
-- `/task assign <plotid>` - Assign a plot to the applicant
+Manage the junior builder plots. **Must be run inside the builder thread channel.**
+- `/task assign <plotid>` - Assign a plot to the junior builder
     - **plots**: ID of the message to the plot
-    > Note, a plot can be assigned to an applicant voa the `Assign` button under the plot message as well
-- `/task revoke <plotid>` - Revoke an active plot from the applicant
+    > Note, a plot can be assigned to the builder via the `Assign` button under the plot message as well
+- `/task revoke <plotid>` - Revoke task from junior builder
     - **plotid**: ID of the message to the plot
 
 ### 13. Plot command
@@ -137,6 +137,6 @@ Manage the plots. **The following can be done by using the action buttons bellow
     - **plotid**: ID of the message to the plot
 ### 14. Accept command
 Accept an member as an builder, for helpers only.
-- ` /accept [user] [mcusername]` - When run without the optional 2 options, it can only be run within an applicant thread to accept the applicant as a builder. Else when the both of the two optional are specified, it can only be run outside the prior thread, to accept a non-applicant as a builder
+- ` /accept [user] [mcusername]` - When run without the optional 2 options, it can only be run within a builder thread to promote the junior builder to a full builder. Else when the both of the two optional are specified, it can only be run outside the prior thread, to accept a non-candidate as a full builder
     - **user**: The user to accept
     - **mcusername**: A valid Minecraft username of the user

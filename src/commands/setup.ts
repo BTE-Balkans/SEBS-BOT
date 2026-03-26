@@ -34,14 +34,14 @@ export default new Command({
                     optionType: 'string'
                 },
                 {
-                    name: 'applicantchannel',
-                    description: 'Applicant threads channel ID',
+                    name: 'builderchannel',
+                    description: 'Builder threads channel ID',
                     required: false,
                     optionType: 'string'
                 },
                 {
                     name: 'plotschannel',
-                    description: 'Plots channel ID - for submitting plots for applicants',
+                    description: 'Plots channel ID - for submitting plots for builders',
                     required: false,
                     optionType: 'string'
                 },
@@ -84,8 +84,8 @@ export default new Command({
             ]
         },
         {
-            name: 'applicantformatmsg',
-            description: 'Configure the builder application format messages (embed) for the applicant',
+            name: 'applicationformatmsg',
+            description: 'Configure the builder application format messages (embed) for the junior builder',
             args: [
                 {
                     name: 'visitservermsg',
@@ -101,7 +101,7 @@ export default new Command({
                 },
                 {
                     name: 'guidelink',
-                    description: 'Link to the build guide for the applicant',
+                    description: 'Link to the build guide for the junior builder',
                     required: false,
                     optionType: 'string'
                 }
@@ -198,7 +198,7 @@ export default new Command({
             const name = options.getString('name')
             const emoji = options.getString('emoji')
             const submitchannel = options.getString('submitchannel')
-            const applicantchannel = options.getString('applicantchannel')
+            const builderchannelid = options.getString('builderchannel')
             const plotschannel = options.getString('plotschannel')
             const formattingmsg = options.getString('formattingmsg')
             const accentColor : string = options.getString('accentcolor')
@@ -207,10 +207,10 @@ export default new Command({
             const addroleashelper = options.getString('addroleashelper')
             const removeroleashelper = options.getString('removeroleashelper')
 
-            if(applicantchannel) {
-                const applicantChannel = await i.guild.channels.fetch(applicantchannel)
-                if(!applicantChannel)
-                    return Responses.embed(i, `**Invalid Applicant Channel:** \nCould not find channel for ID ${applicantChannel}`)
+            if(builderchannelid) {
+                const builderChannel = await i.guild.channels.fetch(builderchannelid)
+                if(!builderChannel)
+                    return Responses.embed(i, `**Invalid Builder Channel:** \nCould not find channel for ID ${builderchannelid}`)
             }
 
             if(plotschannel) {
@@ -219,7 +219,7 @@ export default new Command({
                     return Responses.embed(i, `**Invalid Plots Channel:** \nCould not find channel for ID ${plotsChannel}`)
             }
 
-            if(name || emoji || submitchannel || applicantchannel || plotschannel || formattingmsg) {
+            if(name || emoji || submitchannel || builderchannelid || plotschannel || formattingmsg) {
                 if(name) {
                     guild['name'] = name
                 }
@@ -229,8 +229,8 @@ export default new Command({
                 if(submitchannel) {
                     guild['submitChannel'] = submitchannel
                 }
-                if(applicantchannel) {
-                    guild['applicantChannel'] = applicantchannel
+                if(builderchannelid) {
+                    guild['builderChannel'] = builderchannelid
                 }
                 if(plotschannel) {
                     guild['plotsChannel'] = plotschannel
@@ -270,11 +270,11 @@ export default new Command({
                 }
             }
 
-        } else if(subCommand == 'applicantformatmsg') {
-            let applicantFormatMsg = {}
+        } else if(subCommand == 'applicationformatmsg') {
+            let applicationFormatMsg = {}
             let res = await Guild.findOne({id: guildId})
-            if(res.applicantFormatMsg)
-                applicantFormatMsg = res.applicantFormatMsg
+            if(res.applicationFormatMsg)
+                applicationFormatMsg = res.applicationFormatMsg
 
             const visitServerMsg : string = options.getString('visitservermsg')
             const welcomeImg = options.getString('welcomeimg')
@@ -283,16 +283,16 @@ export default new Command({
             if(visitServerMsg || welcomeImg || guideLink) {
                 hasInputData = true
                 if(visitServerMsg) {
-                    applicantFormatMsg['visitServerMsg'] = visitServerMsg
+                    applicationFormatMsg['visitServerMsg'] = visitServerMsg
                 } else if(welcomeImg) {
-                    applicantFormatMsg['welcomeImg'] = welcomeImg
+                    applicationFormatMsg['welcomeImg'] = welcomeImg
                 } else {
-                    applicantFormatMsg['guideLink'] = guideLink
+                    applicationFormatMsg['guideLink'] = guideLink
                 }
             }
 
             if(hasInputData) {
-                guild['applicantFormatMsg'] = applicantFormatMsg
+                guild['applicationFormatMsg'] = applicationFormatMsg
             }
 
         } else if (subCommand == 'rank') {
@@ -329,7 +329,7 @@ export default new Command({
         } else if(subCommand == 'openapplicationmessage') {
             const applyButton = new ButtonBuilder()
                 .setCustomId('openapplicationbutton')
-                .setLabel('Open Application')
+                .setLabel('Apply')
                 .setEmoji('🎟️') //'🎫'
                 .setStyle(ButtonStyle.Danger)
             const row = new ActionRowBuilder().addComponents(applyButton)
@@ -449,9 +449,9 @@ async function getSettingsEmbed(i : ChatInputCommandInteraction, client: Bot, gu
         fields.push({ name: 'Submission channel', value: (submitChannel) ? `${submitChannel} (${guildData.submitChannel})` : `Invalid ID - ${guildData.submitChannel}` })
     }
 
-    if(guildData.applicantChannel) {
-        const applicantChannel = await i.guild.channels.fetch(guildData.applicantChannel)
-        fields.push({ name: 'Applicant channel', value: (applicantChannel) ? `${applicantChannel} (${guildData.applicantChannel})` : `Invalid ID - ${guildData.applicantChannel}`})
+    if(guildData.buildersChannel) {
+        const builderChannel = await i.guild.channels.fetch(guildData.buildersChannel)
+        fields.push({ name: 'Builder channel', value: (builderChannel) ? `${builderChannel} (${guildData.buildersChannel})` : `Invalid ID - ${guildData.buildersChannel}`})
     }
 
     if(guildData.plotsChannel) {
@@ -489,17 +489,17 @@ async function getSettingsEmbed(i : ChatInputCommandInteraction, client: Bot, gu
         fields.push({name: 'Helper roles', value: helpers})
     }
 
-    if(guildData.applicantFormatMsg) {
+    if(guildData.applicationFormatMsg) {
         let welcomeMsg : string[] = []
-        if(guildData.applicantFormatMsg.visitServerMsg)
-            welcomeMsg.push(`**VisitMsg:** ${guildData.applicantFormatMsg.visitServerMsg}`)
-        if(guildData.applicantFormatMsg.welcomeImg)
-            welcomeMsg.push(`**[WelcomeImg](${guildData.applicantFormatMsg.welcomeImg})**`)
-        if(guildData.applicantFormatMsg.guideLink)
-            welcomeMsg.push[`[**GuideLink**](${guildData.applicantFormatMsg.guideLink})`]
+        if(guildData.applicationFormatMsg.visitServerMsg)
+            welcomeMsg.push(`**VisitMsg:** ${guildData.applicationFormatMsg.visitServerMsg}`)
+        if(guildData.applicationFormatMsg.welcomeImg)
+            welcomeMsg.push(`**[WelcomeImg](${guildData.applicationFormatMsg.welcomeImg})**`)
+        if(guildData.applicationFormatMsg.guideLink)
+            welcomeMsg.push[`[**GuideLink**](${guildData.applicationFormatMsg.guideLink})`]
 
         if(welcomeMsg.length > 0)
-            fields.push({name: 'Applicant Format Msg', value: welcomeMsg.join('\n ')})
+            fields.push({name: 'Application Format Msg', value: welcomeMsg.join('\n ')})
     }
 
     for(let i = 1; i <= 5; i++) {

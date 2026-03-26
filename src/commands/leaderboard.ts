@@ -47,18 +47,31 @@ export default new Command({
 
         let guildName: string
         let queryFilter = []
+        //Match only submissions that are reviewed
+        let queryFilterMatch = {
+            feedback: { $exists: true }
+        }
 
         if (global) {
             guildName = 'All Build Teams'
             let globalGuild = client.guildsData.get('global')
             if(globalGuild)
                 guild = globalGuild 
+
+            queryFilter = [{
+                $match: {
+                    ...queryFilterMatch
+                }
+            }]
         } else {
             // for non-global, just find within this guild
             guildName = i.guild.name
 
             queryFilter = [{
-                $match: { guildId: i.guild.id }
+                $match: { 
+                    guildId: i.guild.id,
+                    ...queryFilterMatch
+                }
             }]
         }
 

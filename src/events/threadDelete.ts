@@ -1,7 +1,7 @@
 import { ThreadChannel } from "discord.js";
 import Bot from "../struct/Client.js";
-import { deletedApplicantThread } from "../trial/closeApplicantThread.js";
+import { deletedBuilderThread } from "../trial/closeApplication.js";
 
 export default async function execute(client: Bot, thread: ThreadChannel) {
-    await deletedApplicantThread(client, thread)
+    await deletedBuilderThread(client, thread)
 }

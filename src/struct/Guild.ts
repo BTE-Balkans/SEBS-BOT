@@ -7,7 +7,7 @@ const Guild = mongoose.model<GuildInterface>(
         emoji: String,
         name: String,
         submitChannel: String,
-        applicantChannel: String,
+        buildersChannel: String,
         plotsChannel: String,
         formattingMsg: String,
         accentColor: String,
@@ -18,7 +18,7 @@ const Guild = mongoose.model<GuildInterface>(
         rank3: { id: String, points: Number, name: String },
         rank4: { id: String, points: Number, name: String },
         rank5: { id: String, points: Number, name: String },
-        applicantFormatMsg: { visitServerMsg: String, welcomeImg: String, guideLink: String }
+        applicationFormatMsg: { visitServerMsg: String, welcomeImg: String, guideLink: String }
     })
 )
 
@@ -27,7 +27,7 @@ export interface GuildInterface {
     emoji: string
     name: string
     submitChannel: string
-    applicantChannel: string
+    buildersChannel: string
     plotsChannel: string
     formattingMsg: string
     accentColor: string
@@ -38,7 +38,7 @@ export interface GuildInterface {
     rank3: Rank
     rank4: Rank
     rank5: Rank
-    applicantFormatMsg: ApplicantFormatMessage
+    applicationFormatMsg: ApplicationFormatMessage
 }
 
 export interface Rank {
@@ -47,7 +47,7 @@ export interface Rank {
     name: string
 }
 
-export interface ApplicantFormatMessage {
+export interface ApplicationFormatMessage {
     visitServerMsg: string
     welcomeImg: string
     guideLink: string

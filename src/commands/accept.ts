@@ -1,7 +1,7 @@
 import { ThreadChannel } from "discord.js";
 import Builder, { BuilderInterface } from "../struct/Builder.js";
 import Command from "../struct/Command.js";
-import { acceptApplicant, acceptNonApplicant } from "../trial/acceptApplicant.js";
+import { acceptCandidate, acceptNonCandidate } from "../trial/acceptBuilder.js";
 import Responses from "../utils/responses.js";
 
 export default new Command({
@@ -25,67 +25,67 @@ export default new Command({
     async run(i, client) {
         const options = i.options
         const guildData = client.guildsData.get(i.guild.id)
-        const applicantUser = options.getUser('user')
+        const builderUser = options.getUser('user')
         const mcUsername = options.getString('mcusername')
 
         let builder : BuilderInterface
-        let applicantThread : ThreadChannel
-        //Check if the accept was used within a thread in the applicants channel
-        let isApplicantChannel = i.channel.isThread && i.channel.parentId == guildData.applicantChannel
+        let builderThread : ThreadChannel
+        //Check if the accept was used within a thread in the builders channel
+        let isbuilderChannel = i.channel.isThread && i.channel.parentId == guildData.buildersChannel
 
-        if(isApplicantChannel && (applicantUser || mcUsername)) {
-            return Responses.embed(i, '**To accept other users, use the user and mcusername parameter outside the applicant channel**', guildData.accentColor)
+        if(isbuilderChannel && (builderUser || mcUsername)) {
+            return Responses.embed(i, '**To accept other users, use the user and mcusername parameter outside the builders channel**', guildData.accentColor)
         }
 
-        if(applicantUser == null && !isApplicantChannel) {
+        if(builderUser == null && !isbuilderChannel) {
             return Responses.embed(i, '**To accept other users, specify the user**', guildData.accentColor)
         }
 
-        if(mcUsername == null && !isApplicantChannel) {
+        if(mcUsername == null && !isbuilderChannel) {
             return Responses.embed(i, '**To accept other users, specify their Minecraft username**', guildData.accentColor)
         }
 
         
-        //If the command is run within the applicant thread, get the builder from the thread
-        if(isApplicantChannel) {
-            builder = await Builder.findOne({guildId: guildData.id, 'applicantInfo.threadId': i.channelId}).lean()
+        //If the command is run within the builder thread, get the builder from the thread
+        if(isbuilderChannel) {
+            builder = await Builder.findOne({guildId: guildData.id, 'threadId': i.channelId}).lean()
 
             if(builder.rank >= 0) 
                 return Responses.embed(i, '**User is already a builder**', guildData.accentColor)
 
-            applicantThread = i.channel as ThreadChannel
+            builderThread = i.channel as ThreadChannel
         }
 
-        //If the command was run outside of the applicant thread, get the builder with applicant info from the input user
-        if(!isApplicantChannel) {
-            builder = await Builder.findOne({guildId: guildData.id, id: applicantUser.id}).lean()
-            let applicantMember = await i.guild.members.fetch(applicantUser.id)
+        //If the command was run outside of the builder thread, get the builder info from the input user
+        if(!isbuilderChannel) {
+            builder = await Builder.findOne({guildId: guildData.id, id: builderUser.id}).lean()
+            let builderMember = await i.guild.members.fetch(builderUser.id)
 
             if(builder?.rank >= 0) 
                 return Responses.embed(i, '**User is already a builder**', guildData.accentColor)
 
-            //If applicant is not found, try accepting them as a non-applicant (ex, if they are a builder on another team)
+            //If builder is not found, try accepting them as a non-candidate (ex, if they are a builder on another team)
             if(builder == null) {
                 try {
-                    let res = await acceptNonApplicant(i, client, applicantUser.id, mcUsername, guildData)
+                    let res = await acceptNonCandidate(i, client, builderUser.id, mcUsername, guildData)
                     return Responses.embed(i, res, guildData.accentColor)
                 }catch(err) {
-                    console.log('[AcceptNonApplicantError] ' + err)
-                    return Responses.errorGeneric(i, err, guildData.accentColor, `Something went wrong while accepting ${applicantMember} user as builder`)
+                    console.log('[AcceptNonCandidateError] ' + err)
+                    return Responses.errorGeneric(i, err, guildData.accentColor, `Something went wrong while accepting ${builderMember} user as full builder`)
                 }
             }
         }
 
         try {
-            if(builder?.applicantInfo.closed)
-                return Responses.embed(i, '**The application is closed**', guildData.accentColor)
+            if(builder?.applicationClosed)
+                return Responses.embed(i, '**The builder application is closed**', guildData.accentColor)
 
             //Accept user as builder
-            let res = await acceptApplicant(i, client, builder, guildData, applicantThread)
+            let res = await acceptCandidate(i, client, builder, guildData, builderThread)
             return Responses.embed(i, res, guildData.accentColor)
         }catch(err) {
-            console.log('[AcceptApplicantError] ' + err)
-            return Responses.errorGeneric(i, err, guildData.accentColor, 'Something went wrong while accepting applicant as builder')
+            console.log('[AcceptCandidateError] ' + err)
+            return Responses.errorGeneric(i, err, guildData.accentColor, 'Something went wrong while accepting user as full builder')
         }
     }
 })

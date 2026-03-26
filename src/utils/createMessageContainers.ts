@@ -120,12 +120,12 @@ async function createSubmissionContainer(submissionIndex : number, submissionAut
  * @param mapUrl The url to the plot on a online map
  * @param plotAuthor The guild member that is the plot author
  * @param accentColor The accent color of the container
- * @param applicantMember The optional guild member that is the applicant
- * @param applicant The optional applicant info of the builder
+ * @param builderMember The optional guild member of the builder
+ * @param builder The optional builder info
  * @param plotComplete The optional date of the date when the plot was completed
  * @returns The ContainerBuilder of the container for the plot
  */
-function createPlotContainer(plotAddress: string, plotCoords: string, plotDifficulty: number, refPhoto: string, mapUrl: string, plotAuthor : GuildMember, accentColor: string, applicantMember: GuildMember = null, builder: BuilderInterface = null, plotComplete: number = null) : ContainerBuilder {
+function createPlotContainer(plotAddress: string, plotCoords: string, plotDifficulty: number, refPhoto: string, mapUrl: string, plotAuthor : GuildMember, accentColor: string, builderMember: GuildMember = null, builder: BuilderInterface = null, plotComplete: number = null) : ContainerBuilder {
     let container = new ContainerBuilder()
         .setAccentColor(parseInt(accentColor, 16))
         .addSectionComponents(
@@ -163,14 +163,14 @@ function createPlotContainer(plotAddress: string, plotCoords: string, plotDiffic
     const editButton = new ButtonBuilder().setCustomId('plot_edit').setLabel('Edit').setEmoji('📝').setStyle(ButtonStyle.Success)
     const deleteButton = new ButtonBuilder().setCustomId('plot_delete').setLabel('Delete').setEmoji('🗑️').setStyle(ButtonStyle.Danger)
 
-    if(builder && applicantMember) {
+    if(builder && builderMember) {
         if(plotComplete) {
             container.addTextDisplayComponents(
-                createTextDisplayBuilder(`**Completed by:** \`${builder.mcUsername}\`(${applicantMember}) on **${plotComplete}**`)
+                createTextDisplayBuilder(`**Completed by:** \`${builder.mcUsername}\`(${builderMember}) on **${plotComplete}**`)
             )
         } else {
             container.addTextDisplayComponents(
-                createTextDisplayBuilder(`**Builder:** \`${builder.mcUsername}\`(${applicantMember})`)
+                createTextDisplayBuilder(`**Builder:** \`${builder.mcUsername}\`(${builderMember})`)
             )
         }
     }else

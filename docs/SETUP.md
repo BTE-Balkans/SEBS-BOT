@@ -37,10 +37,10 @@ The guild data contains the following properties:
 >   - id: The ID of the Discord role associated with the rank
 >   - points: The threshold a builder must reach to obtain the rank
 >   - name: The name of the rank - ex. the name of the Discord role
-> - **applicantWelcomeMsg**: Properties that control the welcome message for the applicant =>  
+> - **applicationformatmsg**: Properties that control the welcome message for the junior =>  
 >   - visitServerMsg: The markdown text shown, on how to visit the build server
 >   - welcomeImg: Link to an image shown in the embed
->   - guideLink: Link to the build guide for the applicant
+>   - guideLink: Link to the build guide for the junior builder
 
 ### Prepping the Discord server
 Before the guild data can be passed to the bot, the Discord server must first be prepped. As noted, rank 1 to 5 are tied to a Discord role, ex. they could be named `Novice`, `Beginner`, `Competent`, `Proficient`, `Expert`. 
@@ -60,7 +60,7 @@ ___
 
 #### Trial system
 
-For the applicant plots a similar channel like the builder submissions channel must be also created. Make sure only helpers and other staff roles can `View Channel` and `Send Messages`. The format of the message submitted for this channel must be:
+For the plots a similar channel like the builder submissions channel must be also created. Make sure only helpers and other staff roles can `View Channel` and `Send Messages`. The format of the message submitted for this channel must be:
 ```
 <Difficulty level>
 <Geographic coordinates>
@@ -69,11 +69,12 @@ For the applicant plots a similar channel like the builder submissions channel m
 <Reference image of build>
 ```
 
-*Note: Marked with <> is required. `Build Difficulty`, from 1 to 5, is used to determine what plot is assigned to the applicant, depending on how they rate themselves as a builder*
+*Note: Marked with <> is required. `Build Difficulty`, from 1 to 5, is used to determine what plot can be assigned to the junior builder, depending on how they rate themselves as a builder*
 
 As for the applications, a **private** thread only channel needs to be setup. The bot must be above others roles on Its permission list and have the following permissions:
 - `View Channel`
 - `Manage Channel`
+- `Manage Roles`
 - `Manage Permissions`
 - `Send Messages`
 - `Send Messages in Threads`
@@ -86,7 +87,7 @@ As for the applications, a **private** thread only channel needs to be setup. Th
 - `Manage Threads`
 - `Read Message History`
 
-Other, bellow roles who want to become applicants (ex. roles assigned to users who just joined the server and performed some action, like chosen a language), must be only allowed the permissions `View Channel`, `Send Messages in Threads` and must not be allowed to `Send Messages`, `Create Public Threads` and `Create Private Threads`.
+Other, bellow roles who want to become full builder (ex. roles assigned to users who just joined the server and performed some action, like chosen a language), must be only allowed the permissions `View Channel`, `Send Messages in Threads` and must not be allowed to `Send Messages`, `Create Public Threads` and `Create Private Threads`.
 ___
 
 You will also need one channel where the `Open application` message will be sent and a channel for builders (users that have min one role which is associated with a rank from 1 to 5) to submit builder submissions to. This channel must only enable builders to `Send Messages`, while other roles can only at max `View Channel`. 
@@ -94,7 +95,7 @@ You will also need one channel where the `Open application` message will be sent
 ### Passing guild data
 
 With the Discord server peppered and bot started, you can pass the gathered info (the ID's, role names, etc.) with the commands `/setup settings`, `/setup rank` etc. as noted [here](COMMANDS.md). 
-> Don't forget to configure the applicant welcome message with the command '/setup applicantwelcomemsg'
+> Don't forget to configure the application welcome message with the command '/setup applicationformatmsg'
 
 Once done use the `/setup info` to confirm the server setup. 
 

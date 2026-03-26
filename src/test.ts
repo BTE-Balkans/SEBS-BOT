@@ -9,7 +9,7 @@ async function test() {
     console.log('Started test')
     await client.loadDatabase()
 
-    //let plots = await Plot.find({applicant: "194538217867837440", $or: [ {complete: null}, {complete: false}]})
+    //let plots = await Plot.find({builder: "194538217867837440", $or: [ {complete: null}, {complete: false}]})
 
     //console.log(plots)
 

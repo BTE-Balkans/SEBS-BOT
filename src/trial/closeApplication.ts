@@ -6,15 +6,15 @@ import { Plot } from "../struct/Plot.js";
 import { closeOpenPlots } from "./handlePlot.js";
 import Responses from "../utils/responses.js";
 
-async function closedApplicantThread(client: Bot, deletedThread : boolean = false, i?: Interaction, thread? : ThreadChannel) {
+async function closedApplication(client: Bot, deletedThread : boolean = false, i?: Interaction, thread? : ThreadChannel) {
     //Get the thread channel
     if(!thread && i)
         thread = i.channel as ThreadChannel
 
     const guildData = client.guildsData.get(thread.guildId)
 
-    //Check if thread channel is associated with a applicant thread
-    const builder : BuilderInterface = await Builder.findOne({guildId: thread.guildId, 'applicantInfo.threadID': thread.id }).lean()
+    //Check if thread channel is associated with a builder thread
+    const builder : BuilderInterface = await Builder.findOne({guildId: thread.guildId, threadId: thread.id }).lean()
 
     let threadID : string = null
     let closed : boolean = false
@@ -22,14 +22,14 @@ async function closedApplicantThread(client: Bot, deletedThread : boolean = fals
     //Check if the thread was deleted
     if(deletedThread) {
         //If application was not already closed, mark is as closed
-        if(builder?.applicantInfo?.closed) {
+        if(builder?.applicationClosed) {
             closed = true
         }
     }else{
-        threadID = builder.applicantInfo.threadId
+        threadID = builder.threadId
 
         //If application was already closed, send reply
-        if(builder?.applicantInfo?.closed) {
+        if(builder?.applicationClosed) {
             if(i && i.isButton())
                 return Responses.embed(i, '**The application is already closed**', guildData.accentColor)
         }else {
@@ -37,11 +37,11 @@ async function closedApplicantThread(client: Bot, deletedThread : boolean = fals
         }
     }
 
-    //Mark the application thread id as null only if the thread was deleted, and mark it as closed
-    await Builder.updateOne({ id: builder.id, guildId: builder.guildId }, { '$set' : { 'applicantInfo': { 'threadId' : threadID, 'closed' : true } } }, { upsert: true })
+    //Mark the builder thread id as null only if the thread was deleted, and mark the application as closed
+    await Builder.updateOne({ id: builder.id, guildId: builder.guildId }, { $set : { 'threadId' : threadID, 'applicationClosed' : true }}, { upsert: true })
 
     if(closed) {
-        //If there are any assigned plots that are not yet complete, remove their applicant 
+        //If there are any assigned plots that are not yet complete, remove their assigned builder 
         const plotLinks = await closeOpenPlots(client, builder, guildData)
         let plotsLinksMsg : string = ''
         if(plotLinks.length > 0) {
@@ -50,7 +50,7 @@ async function closedApplicantThread(client: Bot, deletedThread : boolean = fals
             }
         }
 
-        //Find the guild member of the applicant
+        //Find the guild member of the builder
         const builderMember = await thread.guild.members.fetch(builder.id)
         if(builderMember) {
             let builderMessage = 'Your builder application was closed'
@@ -62,7 +62,7 @@ async function closedApplicantThread(client: Bot, deletedThread : boolean = fals
             await sendDm(builderMember, guildData, builderMessage, 'Builder Application Closure')
 
             //Find the helper guild and notify them of the user closing their application
-            const helper = await thread.guild.members.fetch(builder.applicantInfo.helperId)
+            const helper = await thread.guild.members.fetch(builder.helperId)
             if(helper) {
                 let helperMessage = `**${ (!deletedThread) ? `[${thread.name}](${thread.url})` : `${thread.name}(${builderMember})`} closed their application**`
                 if(plotLinks.length > 0) {
@@ -72,12 +72,12 @@ async function closedApplicantThread(client: Bot, deletedThread : boolean = fals
             }
         }
 
-        //If application was just closed but the thread was not deleted
+        //If application was just closed but the builder thread was not deleted
         //send the reopen application button and the plots revoked message
         if(!deletedThread) {
             //Create a reopen button
             const reopenButton = new ButtonBuilder()
-                .setCustomId('applicant_reopenapplicantion')
+                .setCustomId('builder_reopenapplication')
                 .setLabel('Reopen application')
                 .setEmoji('🎟️')
                 .setStyle(ButtonStyle.Danger)
@@ -96,42 +96,47 @@ async function closedApplicantThread(client: Bot, deletedThread : boolean = fals
             if(plotLinks.length) {
                 await thread.send({embeds: [Responses.createEmbed(`**The following plots have revoked:** ${plotsLinksMsg}`, guildData.accentColor).toJSON()]})
             }
-            
-            return await thread.send({embeds: [Responses.createEmbed('**Builder Application Status: Closed**', guildData.accentColor).toJSON()], components: [row.toJSON()]})
+
+            let res = '**Builder Application Status: Closed**'
+            //Only send the reopen application button if the builder is still a junior builder
+            if(builder.rank == -1)
+                return await thread.send({embeds: [Responses.createEmbed(res, guildData.accentColor).toJSON()], components: [row.toJSON()]})
+            else
+                return await thread.send({embeds: [Responses.createEmbed(res, guildData.accentColor).toJSON()]})
         }
     }
 }
 
 /**
- * Closes the application, with the applicant thread already deleted
- * It notifies the helper and the applicant via dm of the closure while including the info
+ * Closes the application, with the builder thread already deleted
+ * It notifies the helper and the builder via dm of the closure while including the info
  * of any possible still open tasks left, that get closed afterwards. 
  * 
  * Ex, if any open plot is left, it notifies the helper via dm, to clear the plot on the server,
- * before using the plot again for another applicant
+ * before using the plot again for another builder
  * @param client The bot
- * @param thread  The deleted applicant thread
+ * @param thread  The deleted builder thread
  */
-async function deletedApplicantThread(client: Bot, thread: ThreadChannel) {
-    await closedApplicantThread(client, true, null, thread)
+async function deletedBuilderThread(client: Bot, thread: ThreadChannel) {
+    await closedApplication(client, true, null, thread)
 }
 
 /**
- * Closes the application, with the applicant thread still open
- * It notifies the helper and the applicant via dm of the closure while including the info
+ * Closes the application, with the builder thread still open
+ * It notifies the helper and the builder via dm of the closure while including the info
  * of any possible still open tasks left, that get closed afterwards. 
  * 
  * Ex, if any open plot is left, it notifies the helper via dm, to clear the plot on the server,
- * before using the plot again for another applicant
+ * before using the plot again for another builder
  * @param i The interaction that start the closure
  * @param client The bot
  * @returns An message if an error happened, else void
  */
-async function closeApplicantThread(i: Interaction, client: Bot) {
+async function closeApplication(i: Interaction, client: Bot) {
     if(i && i.isButton())
         await i.deferReply({flags: MessageFlags.Ephemeral})
 
-    return await closedApplicantThread(client, false, i)
+    return await closedApplication(client, false, i)
 }
 
-export { deletedApplicantThread, closeApplicantThread }
+export { deletedBuilderThread, closeApplication }

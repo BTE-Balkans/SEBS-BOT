@@ -1,9 +1,9 @@
 import Bot from '../struct/Client.js'
 import { Interaction, MessageFlags, ButtonInteraction, ClientUser } from 'discord.js'
-import { requestApplicantForm } from '../trial/requestApplicantForm.js'
-import { closeApplicantThread } from '../trial/closeApplicantThread.js'
+import { requestBuilderForm } from '../trial/requestBuilderForm.js'
+import { closeApplication } from '../trial/closeApplication.js'
 import { openBuilderMinecraftUsernameModal } from '../utils/openBuilderMinecraftUsernameModal.js'
-import { openApplicantForm } from '../trial/openApplicantForm.js'
+import { openBuilderForm } from '../trial/openBuilderForm.js'
 import { assignPlotButton, deletePlotButton, editPlotButton } from '../trial/handlePlotMsg.js'
 import getHelperMember from '../utils/getHelperMember.js'
 import Responses from '../utils/responses.js'
@@ -92,16 +92,16 @@ export default async function execute(client: Bot, interaction: Interaction) {
 
         switch(customId) {
             case'openapplicationbutton':
-                await requestApplicantForm(interaction, client)
+                await requestBuilderForm(interaction, client)
                 break
-            case 'applicationform_continue':
-                await openApplicantForm(interaction, client)
+            case 'builderform_continue':
+                await openBuilderForm(interaction, client)
                 break
-            case 'applicant_reopenapplicantion':
-                await requestApplicantForm(interaction, client, true)
+            case 'builder_reopenapplication':
+                await requestBuilderForm(interaction, client, true)
                 break
-            case 'applicant_closeapplication':
-                await closeApplicantThread(interaction, client)
+            case 'builder_closeapplication':
+                await closeApplication(interaction, client)
                 break
             case 'plot_assign':
                 await assignPlotButton(interaction, client, guildData)

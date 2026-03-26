@@ -131,23 +131,23 @@ async function assignPlotButton(i: ButtonInteraction, client: Bot, guildData: Gu
     let plot : PlotInterface = await Plot.findOne({id: i.message.id, guildId: guildData.id}).lean()
     if(plot) {
         if(plot.builder)
-            return Responses.container(i, '**Plot is already assigned to another applicant.**  \nOnly plots marked with 🟢 are free', accentColor)
+            return Responses.container(i, '**Plot is already assigned to another builder.**  \nOnly plots marked with 🟢 are free', accentColor)
 
          const helper = await getHelperMember(i, guildData)
-        //Get applicants assigned with helper
-        const applicants = (await Builder.find({guildId: guildData.id, rank: -1})).filter((user) => user.applicantInfo?.closed == false && user.applicantInfo?.threadId != null && user.applicantInfo?.helperId == helper.id)
+        //Get junior builders assigned with helper
+        const builders = (await Builder.find({guildId: guildData.id, rank: -1})).filter((user) => user?.applicationClosed != null && user.applicationClosed == false && user.threadId != null && user.helperId == helper.id)
        
 
-        if(applicants.length == 0)
-            return Responses.container(i, '**No free applicants available**', accentColor)
+        if(builders.length == 0)
+            return Responses.container(i, '**No free junior builders available**', accentColor)
         
-        //Create the select applicant menu builder
-        const selectApplicant = new StringSelectMenuBuilder({custom_id: 'plot_selectapplicant', placeholder: 'Select applicant'})
-        for(let applicant of applicants) {
+        //Create the select builder menu builder
+        const selectBuilder = new StringSelectMenuBuilder({custom_id: 'plot_selectbuilder', placeholder: 'Select builder'})
+        for(let builder of builders) {
             //Get guild member
-            const guildMember = await i.guild.members.fetch(applicant.id)
+            const guildMember = await i.guild.members.fetch(builder.id)
             if(guildMember) {
-                selectApplicant.addOptions(
+                selectBuilder.addOptions(
                     new StringSelectMenuOptionBuilder({label: `${guildMember.displayName} (#${guildMember.user.username})`, value: guildMember.id})
                 )
             }
@@ -156,10 +156,10 @@ async function assignPlotButton(i: ButtonInteraction, client: Bot, guildData: Gu
         //Create container and show it
         const container = new ContainerBuilder()
             .addTextDisplayComponents(
-                new TextDisplayBuilder({content: '**Select applicant to assign plot to**'})
+                new TextDisplayBuilder({content: '**Select builder to assign plot to**'})
             )
             .addActionRowComponents((rowBuilder) => 
-                rowBuilder.addComponents(selectApplicant))
+                rowBuilder.addComponents(selectBuilder))
             .setAccentColor(accentColor)
 
         //let deletedReply = false
@@ -175,9 +175,9 @@ async function assignPlotButton(i: ButtonInteraction, client: Bot, guildData: Gu
                 time: 5 * 60 * 1000
             })
 
-            const applicantID = resp.values.join()
+            const builderID = resp.values.join()
 
-            let builder : BuilderInterface = applicants.find((p) => p.id == applicantID).toObject()
+            let builder : BuilderInterface = builders.find((p) => p.id == builderID).toObject()
             //Claim the plot
             let res = await claimPlot(i, client, plot, builder, helper, guildData, null, i.channel)
             return Responses.container(i, res, accentColor)
