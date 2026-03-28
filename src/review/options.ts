@@ -5,7 +5,7 @@ import { ParticipantType } from '../struct/Submission.js'
 const globalArgs: CommandArg[] = [
     {
         name: 'submissionid',
-        description: 'Submission msg id',
+        description: 'Msg id of the submission',
         required: true,
         optionType: 'string'
     },

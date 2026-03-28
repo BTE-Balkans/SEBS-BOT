@@ -51,7 +51,8 @@ For the builder submission a message explaining the builder system is recommende
 ```
 <Build Count>
 <Geographic coordinates>
-[Location/Build name (Optional)]
+<Address>
+[Collaborators (ex: minecraftusername discordtag1 discordtag2 5)]
 <Image(s) of build>
 ```
 

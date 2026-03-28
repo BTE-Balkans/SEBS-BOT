@@ -11,6 +11,7 @@
     - Added `/task` command to assign/revoke tasks
     - Added `/plot` command to manage plots
     - Added `/accept` command to accept candidates/non-candidates as builders
+    - Added `/submission` command to enable builders to edit submissions before they are claimed for review ([#2](https://github.com/BTE-Balkans/SEBS-BOT/issues/2))
     - Added helper roles
     - Plots are added via the plots channel as messages, which can be managed/assigned via the action buttons in said message
     - Applying for a builder prompts and existing builder for their Minecraft username and registers them as one, else it creates a builder application for it

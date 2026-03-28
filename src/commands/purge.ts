@@ -7,18 +7,14 @@ import { updateReviewerForPurge } from '../review/updateReviewer.js'
 import Rejection from '../struct/Rejection.js'
 import Responses from '../utils/responses.js'
 import { updateBuildersForPurge } from '../review/updateBuilder.js'
+import { globalArgs } from '../review/options.js'
 
 export default new Command({
     name: 'purge',
     description: 'Remove a submission that has already been accepted',
     reviewer: true,
     args: [
-        {
-            name: 'submissionid',
-            description: 'Msg id of the submission',
-            required: true,
-            optionType: 'string'
-        }
+        globalArgs[0]
     ],
     async run(i, client) {
         const options = i.options

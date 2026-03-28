@@ -9,15 +9,15 @@ namespace Responses {
     }
 
     export function submissionHasAlreadyBeenAccepted(interaction, accentColor?: string) {
-        return embed(interaction, `That submission has already been accepted.`, accentColor)
+        return embed(interaction, `The submission has already been accepted.`, accentColor)
     }
 
     export function submissionHasAlreadyBeenDeclined(interaction, accentColor?: string) {
-        return embed(interaction, `That submission has already been declined.`, accentColor)
+        return embed(interaction, `The submission has already been declined.`, accentColor)
     }
 
     export function submissionHasNotBeenReviewed(interaction, accentColor?: string) {
-        return embed(interaction, `That submission has not been reviewed yet.`, accentColor)
+        return embed(interaction, `The submission has not been reviewed yet.`, accentColor)
     }
 
     export function submissionNotFound(interaction, accentColor?: string) {
@@ -59,8 +59,8 @@ namespace Responses {
 
     // PLOT AREA
 
-    export function plotNotFound(interaction, accentColor?: string) {
-        return embed(interaction, `Could not find a plot with that ID.`, accentColor)
+    export function plotNotFound(interaction, plotId, accentColor?: string) {
+        return embed(interaction, `Could not find plot with ID: ${plotId}`, accentColor)
     }
 
     export function plotClaimedByAnotherBuilder(interaction, accentColor?: string) {

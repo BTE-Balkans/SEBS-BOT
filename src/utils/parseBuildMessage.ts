@@ -1,13 +1,18 @@
-import { Message } from "discord.js";
+import { Guild, Message } from "discord.js";
 import { CollaboratorInterface, ParticipantType, SubmissionInterface } from "../struct/Submission.js";
 import Builder, { BuilderInterface } from "../struct/Builder.js";
 import { checkMinecraftUsername } from "./ensureBuilderMinecraftUsername.js";
+import { Plot } from "../struct/Plot.js";
+import { GuildInterface } from "../struct/Guild.js";
+import { error } from "console";
 
 const coordsRegex =
         /^(\s*[(]?[-+]?([1-8]+\d\.(\d+)?|90(\.0+))\xb0?,?\s+[-+]?(180(\.0+)?|((1[0-7]\d)|([1-9]+\d))\.(\d+))\xb0?\s*)|(\s*(\d{1,3})\s*(?:°|d|º| |g|o)\s*([0-6]?\d)\s*(?:'|m| |´|’|′))/
 
 const urlRegex =
         /^(http|https):\/\/[a-z]+.[a-z]+.[a-z]+.+/
+
+const mcUsernameRegex = /^[a-zA-Z0-9_]{3,16}/
 
 /**
  * Parse a build message, line by line, with an optional parsing of a url
@@ -31,7 +36,7 @@ const urlRegex =
         hasContributorsLine :boolean = false
     }
  */
-async function parseBuildMessage(msg: Message, parseUrlLine = false, parseContributorsLine = false, numberRegex = /^[0-9]+/, mcUsernameRegex = /^[a-zA-Z0-9_]{3,16}/) {
+async function parseBuildMessage(msg: Message, parseUrlLine = false, parseContributorsLine = false, numberRegex = /^[0-9]+/) {
     let count : number
     let hasCountLine = false
     let coords : string
@@ -108,84 +113,16 @@ async function parseBuildMessage(msg: Message, parseUrlLine = false, parseContri
                     //Parse the contributors line to a string array
                     let rawContributors = line.split(' ')
 
-                    //Array to temp store the Minecraft usernames and User ID's
-                    let mcUsernames : string[] = []
-                    let members : string[] = []
+                    const res = await parseContributors(rawContributors , numberRegex, msg.guild, msg.author.id)
 
-                    for(let contributor of rawContributors) {
-
-                        //Check if the string item is a Minecraft java username and was not yet added to the temp mc usernames array
-                        if(mcUsernameRegex.test(contributor) && contributor.length >= 3 && contributor.length <= 16) {
-                            if(!mcUsernames.includes(contributor))
-                                mcUsernames.push(contributor)
-                        } else if(contributor.startsWith('@')) {
-                            error = `INVALID USER TAG \`${contributor}\``
-                            break
-                        } else if(contributor.startsWith('<@')) { //Check if the sting item is a tagged member
-                            let memberId = contributor.slice(2, contributor.length - 1)
-                            //Check if the tagged member exists
-                            try {
-                                let member = await msg.guild.members.fetch(memberId)
-                            }catch(err) {
-                                error = `MEMBER WITH ID \`${memberId}\` NOT FOUND`
-                                break
-                            }
-
-                            //Check if the member was not yet added to the temp members array
-                            if(!members.includes(memberId) && memberId != msg.author.id)
-                                members.push(memberId)
-                        } else if(!contributor.includes('-') && numberRegex.test(contributor)) { //Check if the string item doesn't contain minus and is a number
-                            let c = parseInt(contributor)
-                            //Ensure that the count is not 0
-                            if(c == 0)
-                                c = 1
-                            //Check if the contributors count is less then 100, given the unusual high number, 
-                            //and Minecraft usernames can contain only contain 3 digits as well
-                            if(count < 100) {
-                                //Add it to total count, to avoid multiple entries of type ParticipantType.Contributors in the returned array
-                                //This also ensures this entry is in the last
-                                contributorsCount += count
-                            } else {
-                                error = `INVALID CONTRIBUTORS COUNT (${contributor}>99)`
-                                break
-                            }
-                        }
+                    //Exit if error is set
+                    if(res.error && res.error != '') {
+                        error = res.error
+                        break
                     }
-                    
-                    //Exit the loop if error is set
-                    if(error && error != '')
-                        continue
 
-                    //Validate the minecraft usernames
-                    for(let mcUsername of mcUsernames) {
-                        try {
-                            let res = checkMinecraftUsername(mcUsername)
-                            if(!res)
-                                error = `INVALID MINECRAFT USERNAME: \`${mcUsername}\`. ${res['message']}`
-                        }catch(err) {
-                            error = `ERROR WHILE FETCHING MINECRAFT USER INFO: \n ${err}`
-                        }
-                
-                        //Check if the Minecraft username is tied to an existing tracked builder
-                        let builder : BuilderInterface = await Builder.findOne({guildId: msg.guildId, mcUsername: mcUsername}).lean()
-                        //If such builder exists, remove the username from mcUsernames and add the builder to the members array 
-                        if(builder) {
-                            mcUsernames.splice(mcUsernames.indexOf(mcUsername), 1)
-                            //Check that the builder id is different from the submission author
-                            if(builder.id != msg.author.id)
-                                members.push(builder.id)
-                        }
-                    } 
-
-                    //Add the members and minecraft usernames to the collaborators
-                    for(let member of members)
-                        contributors.push({ type: ParticipantType.Member, value: member})
-                    for(let mcUsername of mcUsernames)
-                        contributors.push({ type: ParticipantType.Player, value: mcUsername})
-
-                    //Add the contributors size to the contributors count
-                    contributorsCount += contributors.length
-
+                    contributors = res.contributors
+                    contributorsCount += res.contributorsCount
                 }
             }
 
@@ -212,10 +149,110 @@ async function parseBuildMessage(msg: Message, parseUrlLine = false, parseContri
 }
 
 /**
+ * Parse the raw contributors line (@members usernames count) to contributors and contributorsCount
+ * @param rawContributors And array of the raw contributors
+ * @param error 
+ * @param numberRegex 
+ * @param guild 
+ * @param authorId 
+ * @returns 
+ */
+async function parseContributors(rawContributors : string[], numberRegex: RegExp, guild: Guild, authorId: string) {
+    let contributors: CollaboratorInterface[] = []
+    let contributorsCount = 0
+    let error : string
+
+    //Array to temp store the Minecraft usernames and User ID's
+    let mcUsernames : string[] = []
+    let members : string[] = []
+
+    for(let contributor of rawContributors) {
+
+        //Check if the string item is a Minecraft java username and was not yet added to the temp mc usernames array
+        if(mcUsernameRegex.test(contributor) && contributor.length >= 3 && contributor.length <= 16) {
+            if(!mcUsernames.includes(contributor))
+                mcUsernames.push(contributor)
+        } else if(contributor.startsWith('@')) {
+            error = `INVALID USER TAG \`${contributor}\``
+            break
+        } else if(contributor.startsWith('<@')) { //Check if the sting item is a tagged member
+            let memberId = contributor.slice(2, contributor.length - 1)
+            //Check if the tagged member exists
+            try {
+                let member = await guild.members.fetch(memberId)
+            }catch(err) {
+                error = `MEMBER WITH ID \`${memberId}\` NOT FOUND`
+                break
+            }
+
+            //Check if the member was not yet added to the temp members array
+            if(!members.includes(memberId) && memberId != authorId)
+                members.push(memberId)
+        } else if(!contributor.includes('-') && numberRegex.test(contributor)) { //Check if the string item doesn't contain minus and is a number
+            let c = parseInt(contributor)
+            //Ensure that the count is not 0
+            if(c == 0)
+                c = 1
+            //Check if the contributors count is less then 100, given the unusual high number, 
+            //and Minecraft usernames can contain only contain 3 digits as well
+            if(c < 100) {
+                //Add it to total count, to avoid multiple entries of type ParticipantType.Contributors in the returned array
+                //This also ensures this entry is in the last
+                contributorsCount += c
+            } else {
+                error = `INVALID CONTRIBUTORS COUNT (${contributor}>99)`
+                break
+            }
+        }
+    }
+
+    //Only continue if error is not set
+    if(!error || error == '') {
+
+        //Validate the minecraft usernames
+        for(let mcUsername of mcUsernames) {
+            try {
+                let res = checkMinecraftUsername(mcUsername)
+                if(!res)
+                    error = `INVALID MINECRAFT USERNAME: \`${mcUsername}\`. ${res['message']}`
+            }catch(err) {
+                error = `ERROR WHILE FETCHING MINECRAFT USER INFO: \n ${err}`
+            }
+
+            //Check if the Minecraft username is tied to an existing tracked builder
+            let builder : BuilderInterface = await Builder.findOne({guildId: guild.id, mcUsername: mcUsername}).lean()
+            //If such builder exists, remove the username from mcUsernames and add the builder to the members array 
+            if(builder) {
+                mcUsernames.splice(mcUsernames.indexOf(mcUsername), 1)
+                //Check that the builder id is different from the submission author
+                if(builder.id != authorId)
+                    members.push(builder.id)
+            }
+        } 
+
+        //Add the members and minecraft usernames to the collaborators
+        for(let member of members)
+            contributors.push({ type: ParticipantType.Member, value: member})
+        for(let mcUsername of mcUsernames)
+            contributors.push({ type: ParticipantType.Player, value: mcUsername})
+
+        //Add the contributors size to the contributors count
+        contributorsCount += contributors.length
+    }
+
+    return {
+        'error': error,
+        'contributorsCount': contributorsCount,
+        'contributors' : contributors
+    }
+}
+
+/**
  * Check if each new build property is deferent from the original one and is in the correct format
  * If It's not, mark the parsed as false, and the updated property as false. 
  * 
  * Ex, if the new coords is different from the original, but It's invalid, the returned `updatedCoordsLine` is false
+ * @param guildData Guild data
  * @param newCount The new count, else null
  * @param orgCount The original count value
  * @param newCoords The new coord, else null
@@ -226,7 +263,7 @@ async function parseBuildMessage(msg: Message, parseUrlLine = false, parseContri
  * @param newUrl The new url, else null (optional)
  * @param orgUrl The original url (optional)
  * @returns An object {
- *      parsed': boolean,
+ *      error: string
         count: number,
         updatedCountLine: boolean,
         coords': string,
@@ -237,59 +274,79 @@ async function parseBuildMessage(msg: Message, parseUrlLine = false, parseContri
         updatedUrlLine : boolean
     }
  */
-function parseEditBuild(newCount: number, orgCount: number, newCoords: string, orgCoords: string, newAddress: string, orgAddress: string, checkUrl: boolean = false, newUrl: string = null, orgUrl: string = null) {
+async function parseEditBuild(guildData: GuildInterface, newCount: number, orgCount: number, newCoords: string, orgCoords: string, newAddress: string, orgAddress: string, checkUrl: boolean = false, newUrl: string = null, orgUrl: string = null) {
     let count : number
-    let updatedCountLine = null
-    let coords : string
-    let updatedCoordsLine = null
+    let hasCount : string
+    let coords: string
+    let hasCoords : string
     let address : string
-    let updatedAddressLine = null
+    let hasAddress : string
     let url: string
-    let updatedUrlLine = null
+    let hasUrl : string
     
-    let parsed = true
+    let error = false
 
     if(newCount != null && newCount != orgCount) {
-        updatedCountLine = true
+        hasCount = ''
         count = newCount
-    }
 
-    if(newCoords != null && newCoords != orgCoords) {
-        if(coordsRegex.test(newCoords)) {
-            updatedCoordsLine = true
-            coords = newCoords
-        }else {
-            parsed = false;
-            updatedCoordsLine = false;
+        if(count == 0) {
+            hasCount = 'Count is zero'
+            error = true
         }
     }
 
-    if(newAddress != null && newAddress != orgAddress) {
-        updatedAddressLine = true
-        address = newAddress
+    if(newCoords != null && newCoords.trim() != '' && newCoords.trim() != orgCoords) {
+        hasCoords = ''
+        if(coordsRegex.test(newCoords.trim())) {
+            coords = newCoords.trim()
+
+            //Find if any plot with these coords already exist
+            let res = await Plot.exists({guildId: guildData.id, coords: newCoords})
+            if(res) {
+                hasCoords = 'Duplicate coordinates'
+                error = true
+            }
+
+        }else {
+            hasCoords = `Invalid or unrecognized coordinates: ${newCoords}`
+            error = true
+        }
     }
 
-    if(checkUrl && newUrl != null && newUrl != orgUrl) {
+    if(newAddress != null && newAddress.trim() != '' && newAddress.trim() != orgAddress) {
+        hasAddress = ''
+        address = newAddress.trim()
+
+        //Find if any plot with this address already exists
+        let res = await Plot.exists({guildId: guildData.id, address: address})
+        if(res) {
+            hasAddress = 'Duplicate address'
+            error = true
+        }
+    }
+
+    if(checkUrl && newUrl != null && newUrl != '' && newUrl.trim() != orgUrl) {
+        hasUrl = ''
         if(urlRegex.test(newUrl)) {
-            updatedUrlLine = true;
-            url = newUrl
+            url = newUrl.trim()
         }else {
-            updatedUrlLine = false
-            parsed = false
+            hasUrl = 'Invalid url'
+            error = true
         }
     }
 
     return {
-        'parsed': parsed,
+        'error': error,
         'count': count,
-        'updatedCountLine': updatedCountLine,
+        'hasCount': hasCount,
         'coords': coords,
-        'updatedCoordsLine': updatedCoordsLine,
+        'hasCoords': hasCoords,
         'address': address,
-        'updatedAddressLine': updatedAddressLine,
+        'hasAddress': hasAddress,
         'url' : url,
-        'updatedUrlLine' : updatedUrlLine
+        'hasUrl' : hasUrl
     }
 }
 
-export { parseBuildMessage, parseEditBuild}
+export { parseBuildMessage, parseContributors, parseEditBuild}

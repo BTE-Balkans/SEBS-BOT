@@ -4,18 +4,14 @@ import validateFeedback from '../utils/validateFeedback.js'
 import { checkIfAccepted, checkIfRejected } from '../utils/checkForSubmission.js'
 import Responses from '../utils/responses.js'
 import { getSubmissionClaimer } from '../review/getSubmissionClaimer.js'
+import { globalArgs } from '../review/options.js'
 
 export default new Command({
     name: 'feedback',
     description: 'Send feedback for a submission.',
     reviewer: true,
     args: [
-        {
-            name: 'submissionid',
-            description: 'Msg id of the submission',
-            required: true,
-            optionType: 'string'
-        },
+        globalArgs[0],
         {
             name: 'feedback',
             description: 'feedback (1700 characters max)',

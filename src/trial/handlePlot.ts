@@ -202,37 +202,37 @@ async function editPlot(i: Interaction, guildData: GuildInterface, plot: PlotInt
     let edit = {}
     edit['submission'] = {}
     const {
-        parsed,
+        error,
         count,
-        updatedCountLine,
+        hasCount,
         coords,
-        updatedCoordsLine,
+        hasCoords,
         address,
-        updatedAddressLine,
+        hasAddress,
         url,
-        updatedUrlLine
-    } = parseEditBuild(newDifficulty, plot.difficulty, newCoords, plot.coords, newAddress, plot.address, true, newMapLink, plot.mapUrl)
+        hasUrl
+    } = await parseEditBuild(guildData, newDifficulty, plot.difficulty, newCoords, plot.coords, newAddress, plot.address, true, newMapLink, plot.mapUrl)
 
-    if(parsed) {
+    if(!error) {
         let message = `**Plot(${plot.id}) updated with:**`
 
-        if(updatedCountLine) {
+        if(hasCount) {
             edit['difficulty'] = count
             plot.difficulty = count
             message += `\n> - Difficulty: \`${count}\``
         }
-        if(updatedCoordsLine) {
+        if(hasCoords) {
             edit['coords'] = coords
             plot.coords = coords
             message += `\n> - Coordinates: \`${coords}\``
 
         }
-        if(updatedAddressLine) {
+        if(hasAddress) {
             edit['address'] = address
             plot.address = address
             message += `\n> - Address: \`${address}\``
         }
-        if(updatedUrlLine){
+        if(hasUrl){
             edit['mapUrl'] = url
             plot.mapUrl = url
             message += `\n> - Map url: \`${url}\``
@@ -251,9 +251,14 @@ async function editPlot(i: Interaction, guildData: GuildInterface, plot: PlotInt
         return message
     }else {
         let message = '**The provided one or more edits have an incorrect format:**'
-        if(updatedCoordsLine === false)
-            message += '\n- Invalid or unrecognized coordinates'
-        if(updatedUrlLine == false)
+
+        if(hasCoords != '')
+            message += `\n- ${hasCoords}`
+        
+        if(hasAddress != '')
+            message += `\n- ${hasAddress}`
+        
+        if(hasUrl != '')
             message += '\n- Invalid or unrecognized map url'
 
         return message
@@ -604,7 +609,7 @@ async function requestPlotRelease(client: Bot, plot: PlotInterface, newPlotBuild
 async function releasePlotButton(client: Bot, i: Interaction, plotId: string, newPlotBuilderId: string, guildData: GuildInterface) {
     let plot : PlotInterface = await Plot.findOne({id: plotId, guildId: i.guildId}).lean()
     if(!plot)
-        return Responses.plotNotFound(i, guildData.accentColor)
+        return Responses.plotNotFound(i, plotId, guildData.accentColor)
 
     if(plot.builder != i.user.id)
         return Responses.plotClaimedByAnotherBuilder(i, guildData.accentColor)

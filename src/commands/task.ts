@@ -32,17 +32,18 @@ export default new Command({
                 ...oneArgs,
                 ...globalArgs.slice(1, 2),
                 {
-                    name: 'buildcount',
-                    description: 'Number of build',
-                    optionType: 'number',
-                    required: false
-                },
-                {
                     name: 'buildimage',
                     description: 'Screenshot of build',
                     optionType: 'attachment',
+                    required: true
+                },
+                {
+                    name: 'buildcount',
+                    description: 'Number of builds',
+                    optionType: 'number',
                     required: false
-                }
+                },
+                
             ]
         }
     ],

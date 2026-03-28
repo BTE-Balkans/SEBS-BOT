@@ -10,18 +10,14 @@ import Responses from '../utils/responses.js'
 import submissionRejected = Responses.submissionRejected
 import { getSubmissionClaimer } from '../review/getSubmissionClaimer.js'
 import Submission from '../struct/Submission.js'
+import { globalArgs } from '../review/options.js'
 
 export default new Command({
     name: 'decline',
     description: 'Decline a submission.',
     reviewer: true,
     args: [
-        {
-            name: 'submissionid',
-            description: 'Msg id of the submission',
-            required: true,
-            optionType: 'string'
-        },
+        globalArgs[0],
         {
             name: 'feedback',
             description: 'feedback for submission (1700 chars max)',

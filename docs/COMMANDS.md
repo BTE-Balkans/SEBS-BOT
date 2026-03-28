@@ -1,5 +1,5 @@
 # Commands
-The bot offers 14 commands, with more to come in the future. Some are public, some are for reviewers only and some are admin only.
+The bot offers 15 commands, with more to come in the future. Some are public, some are for reviewers only and some are admin only.
 > Note: Parameters marked with `[]` are optional, as opposed to ones marked with `<>`
 
 ## 1. Setup command
@@ -137,6 +137,17 @@ Manage the plots. **The following can be done by using the action buttons bellow
     - **plotid**: ID of the message to the plot
 ### 14. Accept command
 Accept an member as an builder, for helpers only.
-- ` /accept [user] [mcusername]` - When run without the optional 2 options, it can only be run within a builder thread to promote the junior builder to a full builder. Else when the both of the two optional are specified, it can only be run outside the prior thread, to accept a non-candidate as a full builder
+- `/accept [user] [mcusername]` - When run without the optional 2 options, it can only be run within a builder thread to promote the junior builder to a full builder. Else when the both of the two optional are specified, it can only be run outside the prior thread, to accept a non-candidate as a full builder
     - **user**: The user to accept
     - **mcusername**: A valid Minecraft username of the user
+### 15. Submission command
+Enable builders to edit submissions before they are claimed for review
+- `/submission edit<submissionid> [address] [coordinates] [buildcount]` - Edit a submission's address, coordinates or build count
+  - **submissionid**: The ID of the submission message
+  - **address**: The new address of the submission
+  - **coordinates**: The new coordinates of the build
+  - **buildcount**: The new build count
+- `/submission collaborators <submissionid> [add] [remove]` - Add or remove collaborators in the same format as in the submission message (discordtags mcusernames count)
+    - **submissionid**: The ID of the submission message
+    - **add**:  Collaborators to add
+    - **remove**:  Collaborators to remove

@@ -9,6 +9,7 @@ import Responses from "../utils/responses.js";
 import { checkMinecraftUsername } from "../utils/ensureBuilderMinecraftUsername.js";
 import { getBuilderRankFromRoles } from "../utils/getBuilderRankFromRoles.js";
 import { acceptNonCandidate } from "./acceptBuilder.js";
+import { createDifficultySelectMenuOptions } from "../utils/createDifficultySelectMenuOptions.js";
 
 /**
  * Opens a modal which request the info for new or existing application from the builder
@@ -36,13 +37,14 @@ async function openBuilderForm(i : ButtonInteraction, client: Bot) {
     let modalLabels : APILabelComponent[] = []
 
     //Only create the full builder form if user doesn't have a builder role
-    if(client.test || !hasBuilderRole) {
+    if(!hasBuilderRole) {
         //Get helpers
         const helpers = await Helper.aggregate([
             {
                 $match: {
                     guildId: guildData.id,
-                    inactive: false
+                    inactive: false,
+                    id: { $ne: i.user.id} //Prevent the the interaction using being the helper 
                 }
             },
             {
@@ -101,38 +103,12 @@ async function openBuilderForm(i : ButtonInteraction, client: Bot) {
             .setDescription('Helpers with more applications open, will take more time to respond')
             .setStringSelectMenuComponent(selectHelperUser)
 
+        const selfRateOptions = createDifficultySelectMenuOptions(true, 1)
 
         const selectSelfRate = new StringSelectMenuBuilder()
             .setCustomId('builderform_selfrate')
             .setPlaceholder('Select from 1 to 5')
-            .addOptions(
-                new StringSelectMenuOptionBuilder()
-                    .setLabel(`1 - ${Difficulty.Novice}`)
-                    .setEmoji(DifficultyEmoji.get(1))
-                    .setDescription(`${Difficulty.Novice} builder`)
-                    .setValue('1')
-                    .setDefault(true),
-                new StringSelectMenuOptionBuilder()
-                    .setLabel(`2 - ${Difficulty.Beginner}`)
-                    .setEmoji(DifficultyEmoji.get(2))
-                    .setDescription(`${Difficulty.Beginner} builder`)
-                    .setValue('2'),
-                    new StringSelectMenuOptionBuilder()
-                    .setLabel(`3 - ${Difficulty.Competent}`)
-                    .setEmoji(DifficultyEmoji.get(3))
-                    .setDescription(`${Difficulty.Competent} builder`)
-                    .setValue('3'),
-                    new StringSelectMenuOptionBuilder()
-                    .setLabel(`4 - ${Difficulty.Proficient}`)
-                    .setEmoji(DifficultyEmoji.get(4))
-                    .setDescription(`${Difficulty.Proficient} builder`)
-                    .setValue('4'),
-                    new StringSelectMenuOptionBuilder()
-                    .setLabel(`5 - ${Difficulty.Expert}`)
-                    .setEmoji(DifficultyEmoji.get(5))
-                    .setDescription(`${Difficulty.Expert} builder`)
-                    .setValue('5')
-            )
+            .addOptions(selfRateOptions)
 
         const selectSelfRateLabel = new LabelBuilder()
             .setLabel('How do you rank yourself as a builder?')
@@ -177,7 +153,7 @@ async function openBuilderForm(i : ButtonInteraction, client: Bot) {
 
         //If user already has a builder role but they didn't yet full register (set their MC username), 
         // accept them as as full builder and not as an junior builder
-        if(!client.test && hasBuilderRole && !builder?.mcUsername) {
+        if(hasBuilderRole && !builder?.mcUsername) {
             //If builder isn't yet registered accept them using the Minecraft username
             if(!builder) {
                 let acceptRes = await acceptNonCandidate(i, client, i.user.id, mcUsername, guildData)

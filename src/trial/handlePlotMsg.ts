@@ -5,12 +5,13 @@ import { parseBuildMessage } from "../utils/parseBuildMessage.js";
 import { Plot, PlotInterface } from "../struct/Plot.js";
 import { addPlotAddedReaction } from "./addPlotAddedReaction.js";
 import Builder, { BuilderInterface } from "../struct/Builder.js";
-import { claimPlot, deletePlot } from "./handlePlot.js";
+import { claimPlot, deletePlot, editPlot } from "./handlePlot.js";
 import Responses from "../utils/responses.js";
 import getHelperMember from "../utils/getHelperMember.js";
 import { downloadAttachment } from "../utils/downloadAttachment.js";
 import { rejectMessage } from "../utils/rejectMessage.js";
 import { createPlotContainer } from "../utils/createMessageContainers.js";
+import { createDifficultySelectMenuOptions } from "../utils/createDifficultySelectMenuOptions.js";
 
 async function handlePlotMsg(client : Bot, msg : Message, guildData: GuildInterface) {
     const guildMember = await msg.guild.members.fetch(msg.author.id)
@@ -203,20 +204,37 @@ async function editPlotButton(i: ButtonInteraction, client: Bot, guildData: Guil
         //Create the modal components
         const modalSubtitle = new TextDisplayBuilder({content: `### Editing plot - ${plot.id}`})
 
+        const selectDifficultyOptions = createDifficultySelectMenuOptions(false, plot.difficulty)
+        const selectDifficulty = new StringSelectMenuBuilder({customId: 'plotmodal_difficulty', placeholder: 'Select difficulty'})
+        selectDifficulty.addOptions(selectDifficultyOptions)
+        const selectDifficultyLabel = new LabelBuilder({label: 'Select plot difficulty'}).setStringSelectMenuComponent(selectDifficulty)
+
         const addressText = new TextInputBuilder({customId: 'plotmodal_address', value: plot.address, style: TextInputStyle.Short})
         const addressTextLabel = new LabelBuilder({label: 'Address',}).setTextInputComponent(addressText)
 
+        const coordsText = new TextInputBuilder({customId: 'plotmodal_coords', value: plot.coords, style: TextInputStyle.Short})
+        const coordsTextLabel = new LabelBuilder({label: 'Geographic Coordinates'}).setTextInputComponent(coordsText)
+
+        const urlText = new TextInputBuilder({customId: 'plotmodal_url', value: plot.mapUrl, style: TextInputStyle.Short})
+        const urlTextLabel = new LabelBuilder({label: 'Map url'}).setTextInputComponent(urlText)
+
         const modal = new ModalBuilder({customId: 'plotmodal', title: `Edit Plot`})
         modal.addTextDisplayComponents([modalSubtitle.toJSON()])
-        modal.addLabelComponents([addressTextLabel.toJSON()])
+        modal.addLabelComponents([selectDifficultyLabel.toJSON(), addressTextLabel.toJSON(), coordsTextLabel.toJSON(), urlTextLabel.toJSON()])
 
         await i.showModal(modal, {withResponse: true})
 
         const res = await i.awaitModalSubmit({filter: interaction => interaction.customId == 'plotmodal', time: 5 * 60 * 1000})
+        await res.deferReply({flags: MessageFlags.Ephemeral})
 
+        const newDifficulty = parseInt(res.fields.getStringSelectValues('plotmodal_difficulty').join())
         const newAddress = res.fields.getTextInputValue('plotmodal_address')
+        const newCoords = res.fields.getTextInputValue('plotmodal_coords')
+        const newMapLink = res.fields.getTextInputValue('plotmodal_url')
 
-        return res.reply({components: [Responses.createContainer(`**New address:** \n- ${newAddress}`, accentColor).toJSON()], flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2})
+        let reply = await editPlot(i, guildData, plot, newAddress, newCoords, newDifficulty, newMapLink)
+
+        return Responses.embed(i, reply, guildData.accentColor)
     }catch(err) {
         console.log(`[EditPlotButtonError]: \n${err}`)
         return i.reply({components: [Responses.createContainer(`**Edit Plot Error: **\n${err}`, accentColor).toJSON()], flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2})
