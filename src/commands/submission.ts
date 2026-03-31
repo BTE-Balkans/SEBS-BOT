@@ -1,8 +1,8 @@
 import { Message, TextChannel, User } from "discord.js";
-import { globalArgs } from "../review/options.js";
+import { globalArgs, submissionIndexArg } from "../review/options.js";
 import Command from "../struct/Command.js";
 import { Plot, PlotInterface } from "../struct/Plot.js";
-import Submission, { CollaboratorInterface, ParticipantType, SubmissionInterface } from "../struct/Submission.js";
+import Submission, { ParticipantType, SubmissionInterface } from "../struct/Submission.js";
 import { checkIfRejected } from "../utils/checkForSubmission.js";
 import Responses from "../utils/responses.js";
 import { parseContributors, parseEditBuild } from "../utils/parseBuildMessage.js";
@@ -19,7 +19,7 @@ export default new Command({
             name: 'edit',
             description: 'Edit a submissions address, coordinates or build count',
             args: [
-                globalArgs[0],
+                submissionIndexArg,
                 {
                     name: 'address',
                     description: 'New address of the submission',
@@ -44,7 +44,7 @@ export default new Command({
             name: 'collaborators',
             description: 'Add or remove collaborators from a submission',
             args: [
-                globalArgs[0],
+                submissionIndexArg,
                 {
                     name: 'add',
                     description: 'Collaborators to add',
@@ -64,20 +64,23 @@ export default new Command({
         const guildData = client.guildsData.get(i.guildId)
         const options = i.options
 
-        const submissionId = options.getString('submissionid')
+        
+        const submissionIndex = options.getNumber('submissionindex')
         const submitChannel = await i.guild.channels.fetch(guildData.submitChannel) as TextChannel
 
         let submissionMsg : Message
+        let submission : SubmissionInterface = await Submission.findOne({index: submissionIndex, guildId: guildData.id}).lean()
+        
+        if(!submission) 
+            return Responses.submissionNotFound(i, guildData.accentColor)
+
+        const submissionId = submission.id
+
         try {
             submissionMsg = await submitChannel.messages.fetch(submissionId)
         }catch(err) {
             return Responses.invalidSubmissionID(i, submissionId, guildData.accentColor)
         }
-
-        let submission : SubmissionInterface = await Submission.findOne({id: submissionId, guildId: guildData.id}).lean()
-
-        if(!submission) 
-            return Responses.submissionNotFound(i, guildData.accentColor)
 
         const isRejected = await checkIfRejected(submissionId, guildData.id)
             

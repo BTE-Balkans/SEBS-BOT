@@ -198,6 +198,13 @@ const roadArgs: CommandArg[] = [
     }
 ]
 
+const submissionIndexArg: CommandArg = {
+    name: 'submissionindex',
+    description: 'The index of the submission (#<number> on the submission message)',
+    required: true,
+    optionType: 'number'
+}
+
 function submissionBuildersMatch(id: string) {
     return {
         $or: [
@@ -213,4 +220,4 @@ function submissionBuildersMatch(id: string) {
     }
 }
 
-export { globalArgs, oneArgs, manyArgs, landArgs, roadArgs, submissionBuildersMatch }
+export { globalArgs, oneArgs, manyArgs, landArgs, roadArgs, submissionIndexArg, submissionBuildersMatch }

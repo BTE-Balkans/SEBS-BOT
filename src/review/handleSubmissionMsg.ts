@@ -207,7 +207,7 @@ async function handleSubmissionMsg(client : Bot, msg: Message, guildData: GuildI
 
 // helper func that sends the rejection msg and deletes the submission
 async function reject(msg: Message, guildData: GuildInterface, reason: string, title? : string, time = 30000, deleteOrgMsg = true) {
-    await rejectMessage(msg, reason, `INCORRECT SUBMISSION FORMAT: ${reason}`, `**[Correct format:](${guildData.formattingMsg})**\n[Build count]\n[Coordinates]\n[Address]\n[Collaborators (ex: minecraftusername discordtag1 discordtag2 5) - Optional]\n[Image(s) of build]\n\n__The entire submission must be in ONE MESSAGE!__\nView [pinned message](${guildData.formattingMsg}) for more details.`, guildData, time, title, deleteOrgMsg)
+    await rejectMessage(msg, reason, `INCORRECT SUBMISSION FORMAT: ${reason}`, `**[Correct format:](${guildData.formattingMsg})**\n[Build count]\n[Geographic coordinates]\n[Build name (opt.), International address]\n[Collaborators (Optional)]\n[Image(s) of build]\n\n__The entire submission must be in ONE MESSAGE!__\nView [pinned message](${guildData.formattingMsg}) for more details.`, guildData, time, title, deleteOrgMsg)
     return false
 }
 

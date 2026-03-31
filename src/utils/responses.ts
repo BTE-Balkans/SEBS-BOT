@@ -151,20 +151,20 @@ namespace Responses {
      * @param title The optional title of the embed 
      * @returns The EmbedBuilder of the embed
      */
-    export function createEmbed(message : string, accentColor: string = null, title = '') : EmbedBuilder {
+    export function createEmbed(message : string, accentColor?: string, title = '') : EmbedBuilder {
         if (title != '') return createEmbedWithTitle(title, message, accentColor)
         
         const embed = new EmbedBuilder({ description: message })
-        if(accentColor != null)
+        if(accentColor)
             embed.setColor(`#${accentColor}`)
 
         return embed
     }
 
-    function createEmbedWithTitle(title, message, accentColor: string) : EmbedBuilder {
+    function createEmbedWithTitle(title, message, accentColor?: string) : EmbedBuilder {
         const embed = new EmbedBuilder({title: title, description: message})
 
-        if(accentColor != null)
+        if(accentColor)
             embed.setColor(`#${accentColor}`)
 
         return embed

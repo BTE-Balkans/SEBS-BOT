@@ -29,6 +29,8 @@ Setup the bot for the server, admin only.
     - **inactive** - True if inactive, false if active
     > **Note**: If inactive, the helper doesn't show up in the builder application survey
 - `/setup openapplicationmessage` - Post the open builder application message to the channel
+- `/setup formattingmsg [optionaltext]` - Make or update the existing formatting message in the channel
+    - optionaltext: Optional text to be inserted at the end as a new paragraph
 - `/setup info` - View current server setup info
 ## 2. Review command
 Review one or more submissions, for reviewers.
@@ -142,12 +144,12 @@ Accept an member as an builder, for helpers only.
     - **mcusername**: A valid Minecraft username of the user
 ### 15. Submission command
 Enable builders to edit submissions before they are claimed for review
-- `/submission edit<submissionid> [address] [coordinates] [buildcount]` - Edit a submission's address, coordinates or build count
-  - **submissionid**: The ID of the submission message
+- `/submission edit<submissionindex> [address] [coordinates] [buildcount]` - Edit a submission's address, coordinates or build count
+  - **submissionindex**: The index of the submission (#<number> on the submission message)
   - **address**: The new address of the submission
   - **coordinates**: The new coordinates of the build
   - **buildcount**: The new build count
-- `/submission collaborators <submissionid> [add] [remove]` - Add or remove collaborators in the same format as in the submission message (discordtags mcusernames count)
-    - **submissionid**: The ID of the submission message
+- `/submission collaborators <submissionindex> [add] [remove]` - Add or remove collaborators in the same format as in the submission message (discordtags mcusernames count)
+    - **submissionindex**: The index of the submission (#<number> on the submission message)
     - **add**:  Collaborators to add
     - **remove**:  Collaborators to remove
