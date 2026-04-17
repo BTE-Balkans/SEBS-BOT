@@ -112,7 +112,7 @@ export default new Command({
         if (points < guildData.rank2.points) {
             return i.editReply({
                 embeds: [ {
-                    description: `**Progress of <@${user.id}> in ${guildData.emoji} ${guildName} ${guildData.emoji}**
+                    description: `**Progress of <@${user.id}> in ${guildData.emoji} | ${guildName}**
                     
                     **Current rank:** ${guildData.rank1.name}
                     
@@ -145,7 +145,7 @@ export default new Command({
         if (points < guildData.rank3.points || largeBuildPoints < MASTER_BUILDER_QUALITY_POINTS) {
             return i.editReply({
                 embeds: [{ 
-                    description: `**Progress of <@${user.id}> in ${guildData.emoji} ${guildName} ${guildData.emoji}**
+                    description: `**Progress of <@${user.id}> in ${guildData.emoji} | ${guildName}**
                     
                     **Current rank:** ${guildData.rank2.name}
                     
@@ -160,7 +160,7 @@ export default new Command({
         if (points < guildData.rank4.points || largeBuildPoints < ARCHITECT_QUALITY_POINTS) {
             return i.editReply({
                 embeds: [{
-                    description: `**Progress of <@${user.id}> in ${guildData.emoji} ${guildName} ${guildData.emoji}**
+                    description: `**Progress of <@${user.id}> in ${guildData.emoji} | ${guildName}**
                         
                     **Current rank:** ${guildData.rank3.name}
                     
@@ -193,7 +193,7 @@ export default new Command({
         if (points < guildData.rank5.points || championBuildPoints < MASTER_BUILDER_QUALITY_POINTS) {
             return i.editReply({
                 embeds: [{
-                    description:  `**Progress of <@${user.id}> in ${guildData.emoji} ${guildName} ${guildData.emoji}**
+                    description:  `**Progress of <@${user.id}> in ${guildData.emoji} | ${guildName}**
                     
                     **Current rank:** ${guildData.rank4.name}!
                     
@@ -206,7 +206,7 @@ export default new Command({
 
         return i.editReply({
             embeds: [ {
-                description: `**Progress of <@${user.id}> in ${guildData.emoji} ${guildName} ${guildData.emoji}**
+                description: `**Progress of <@${user.id}> in ${guildData.emoji} | ${guildName}**
                     
                 **Current rank:** ${guildData.rank5.name}!
                 

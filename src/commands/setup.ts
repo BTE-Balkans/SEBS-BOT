@@ -523,7 +523,7 @@ async function getSettingsEmbed(i : ChatInputCommandInteraction, client: Bot, gu
     let fields : APIEmbedField[] = []
 
     if(guildData.name) {
-        fields.push({ name: 'Server name', value: (guildData.emoji) ? `${guildData.emoji} - ${guildData.name} - ${guildData.emoji}` : `${guildData.name}` })
+        fields.push({ name: 'Server name', value: (guildData.emoji) ? `${guildData.emoji} | ${guildData.name}` : `${guildData.name}` })
     }
 
     if(guildData.submitChannel) {

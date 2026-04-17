@@ -85,7 +85,7 @@ namespace Responses {
 
     export function points(interaction, userID, points, buildings, landMeters, roadKMs, emoji, guildName, accentColor?: string) {
         return embed(interaction,
-            `<@${userID}> has :tada: ***${formatNumber(points)}***  :tada: points in ${emoji} ${guildName} ${emoji}!!
+            `<@${userID}> has :tada: ***${formatNumber(points)}***  :tada: points in ${emoji} | ${guildName}!!
             
             Number of buildings: :house: ***${buildings}***  :house:
             Sqm of land: :corn: ***${formatNumber(landMeters)}***  :corn:

@@ -189,7 +189,7 @@ export default new Command({
             const startIndex = i * ITEMS_PER_PAGE
             const endIndex = startIndex + ITEMS_PER_PAGE
             const embed = {
-                title: `${metric.charAt(0).toUpperCase() + metric.slice(1)} Leaderboard for ${guild.emoji} ${guildName} ${guild.emoji}`,
+                title: `${metric.charAt(0).toUpperCase() + metric.slice(1)} Leaderboard for ${guild.emoji} | ${guildName}`,
                 description: leaderboard.map((element, index) => {
                     return `**${index + 1}.** <@${element.id}>: ${element.val} ${pluralsMap[metric]}`
                 }).slice(startIndex, endIndex).join('\n\n')

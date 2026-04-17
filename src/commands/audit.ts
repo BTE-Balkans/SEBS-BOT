@@ -2,7 +2,6 @@ import Command from '../struct/Command.js'
 import { ReviewerInterface } from '../struct/Reviewer.js'
 import Submission from '../struct/Submission.js'
 import Rejection from '../struct/Rejection.js'
-//import { pagination, ButtonTypes, ButtonStyles } from '@devraelfreeze/discordjs-pagination'
 import pagination, { PaginationButtonType } from '../utils/pagination.js'
 import { ButtonStyle } from 'discord.js'
 
@@ -204,7 +203,7 @@ export default new Command({
                 const startIndex = p * ITEMS_PER_PAGE
                 const endIndex = startIndex + ITEMS_PER_PAGE
                 const embed = {
-                    title: `${metric.charAt(0).toUpperCase() + metric.slice(1)} Leaderboard for ${guild.emoji} ${guildName} ${guild.emoji}`,
+                    title: `${metric.charAt(0).toUpperCase() + metric.slice(1)} Leaderboard for ${guild.emoji} | ${guildName}`,
                     description: leaderboard.map((element, index) => {
                         return `**${index + 1}.** <@${element.id}>: ${element.val} ${pluralsMap[metric]}`
                     }).slice(startIndex, endIndex).join('\n\n')
@@ -484,9 +483,9 @@ export default new Command({
                         title: `RESULT OF AUDIT`,
                         description: `\`${user.username}#${user.discriminator}\` has :tada: ***${
                             userData.reviews
-                        }***  :tada: reviews in ${guild.emoji} ${guildName} ${
-                            guild.emoji
-                        }!!\n\nNumber of acceptances: :white_check_mark: ***${
+                        }***  :tada: reviews in ${guild.emoji} | ${guildName}
+                        
+                        !!\n\nNumber of acceptances: :white_check_mark: ***${
                             userData.acceptances || 0
                         }***  :white_check_mark: !!!\nNumber of rejections: :x: ***${
                             userData.rejections || 0

@@ -14,7 +14,7 @@ Setup the bot for the server, admin only.
     - addroleasreviewer: The ID of a role set to be marked as a reviewer
     - removeroleasreviewer: The ID of a role set to be unmarked/removed as a reviewer
 - `/setup applicationformatmsg [visitservermsg] [welcomeimg] [guidelink]`  
-    - visitservermsg: The markdown text shown in the welcome msg, on how to visit the build server
+    - visitservermsg: The Markdown text shown in the welcome msg, on how to visit the build server
     - welcomeimg: Link to an image shown in the welcome msg
     - guidelink: Link to the build guide for the junior builder
 - `/setup rank <level> [roleid] [points] [name]`
@@ -23,7 +23,7 @@ Setup the bot for the server, admin only.
     - points: The minimum points needed for the level
     - name: The name of the level role
 - `/setup setuphelper` - Adds and setups user as helper
-    - **user**: The user to setup as a helper (User must have at min one helper role)
+    - **user**: The user to set up as a helper (User must have at min one helper role)
 - `/setup helperstatus` - Mark helper as inactive or active
     - **user** - The helper to change their status of
     - **inactive** - True if inactive, false if active
@@ -89,7 +89,7 @@ Remove a submission that has already been accepted, for reviewers.
 View the leaderboard for the current server, or globally. Public.
 - `leaderboard [global] [metric]`
     - global: Show SEBS leaderboard for all registered teams 
-    - metric: What metric to rank people by (Points - **defualt**, Buildings, Roads, Land)
+    - metric: What metric to rank people by (Points - **default**, Buildings, Roads, Land)
 
 ### 7. Server progress command
 View building counts in the current server, public
@@ -138,7 +138,7 @@ Manage the plots. **The following can be done by using the action buttons bellow
 - `/plot delete <plotid>` - Delete an open, unassigned plot
     - **plotid**: ID of the message to the plot
 ### 14. Accept command
-Accept an member as an builder, for helpers only.
+Accept a member as a builder, for helpers only.
 - `/accept [user] [mcusername]` - When run without the optional 2 options, it can only be run within a builder thread to promote the junior builder to a full builder. Else when the both of the two optional are specified, it can only be run outside the prior thread, to accept a non-candidate as a full builder
     - **user**: The user to accept
     - **mcusername**: A valid Minecraft username of the user
@@ -151,5 +151,5 @@ Enable builders to edit submissions before they are claimed for review
   - **buildcount**: The new build count
 - `/submission collaborators <submissionindex> [add] [remove]` - Add or remove collaborators in the same format as in the submission message (discordtags mcusernames count)
     - **submissionindex**: The index of the submission (#<number> on the submission message)
-    - **add**:  Collaborators to add
-    - **remove**:  Collaborators to remove
+    - **add**: Collaborators to add
+    - **remove**: Collaborators to remove
