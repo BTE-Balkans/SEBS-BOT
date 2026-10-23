@@ -1,5 +1,6 @@
 import Command from '../struct/Command.js'
-import Builder from '../struct/Builder.js'
+import GuildPlayer from '../struct/GuildPlayer.js'
+import MinecraftPlayer from '../struct/MinecraftPlayer.js'
 import Responses from '../utils/responses.js'
 
 export default new Command({
@@ -38,13 +39,13 @@ export default new Command({
             const toggle = i.options.getBoolean('enabled')
             const userId = i.user.id
 
-            await Builder.updateMany({ id: userId }, { dm: toggle }).exec()
+            await GuildPlayer.updateMany({ id: userId, guildId: i.guildId }, { dm: toggle }, { upsert:  true }).exec()
 
             return Responses.dmPreferenceUpdated(i, toggle, guildData.accentColor)
         }
         else if(i.options.getSubcommand() == 'mcusername') {
             const mcUsername = i.options.getString('username')
-            await Builder.updateMany({id: i.user.id}, { 'mcUsername': mcUsername})
+            await MinecraftPlayer.updateMany({ id: i.user.id }, { 'mcUsername': mcUsername }, { upsert: true })
 
             return Responses.minecraftUsernameUpdated(i, mcUsername, guildData, guildData.accentColor)
         }

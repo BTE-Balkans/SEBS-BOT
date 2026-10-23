@@ -1,5 +1,5 @@
 import Command from '../struct/Command.js'
-import { ReviewerInterface } from '../struct/Reviewer.js'
+import { ReviewerStatsInterface } from '../struct/ReviewerStats.js'
 import Submission from '../struct/Submission.js'
 import Rejection from '../struct/Rejection.js'
 import pagination, { PaginationButtonType } from '../utils/pagination.js'
@@ -261,7 +261,7 @@ export default new Command({
             // ---------------------------------------------- INDIVIDUAL ----------------------------------------------
             const user = i.options.getUser('user')
             const userId = i.options.getUser('user').id
-            let userData: ReviewerInterface
+            let reviewerUserStats: ReviewerStatsInterface
             let guildName: string
 
             if (global) {
@@ -344,14 +344,14 @@ export default new Command({
                 let feedbackWordsCount = (submissionFeedback?.[0]?.total ?? 0) + (rejectionFeedback?.[0]?.total ?? 1)
                 let feedbackWordsAverage = feedbackWordsCount > 0 ? feedbackWordsTotal / feedbackWordsCount : 0
 
-                userData = {} as ReviewerInterface
-                userData.reviews = (acceptanceCount?.[0]?.total ?? 0) + (rejectionCount?.[0]?.total ?? 0)
-                userData.acceptances = acceptanceCount?.[0]?.total ?? 0
-                userData.rejections = rejectionCount?.[0]?.total ?? 0
-                userData.feedbackCharsAvg = feedbackCharsAverage
-                userData.feedbackWordsAvg = feedbackWordsAverage
-                userData.qualityAvg = averages?.[0]?.quality_average ?? 0
-                userData.complexityAvg = averages?.[0]?.complexity_average ?? 0
+                reviewerUserStats = {} as ReviewerStatsInterface
+                reviewerUserStats.reviews = (acceptanceCount?.[0]?.total ?? 0) + (rejectionCount?.[0]?.total ?? 0)
+                reviewerUserStats.acceptances = acceptanceCount?.[0]?.total ?? 0
+                reviewerUserStats.rejections = rejectionCount?.[0]?.total ?? 0
+                reviewerUserStats.feedbackCharsAvg = feedbackCharsAverage
+                reviewerUserStats.feedbackWordsAvg = feedbackWordsAverage
+                reviewerUserStats.qualityAvg = averages?.[0]?.quality_average ?? 0
+                reviewerUserStats.complexityAvg = averages?.[0]?.complexity_average ?? 0
 
             } else {
                 // get reviewer in current guild
@@ -456,18 +456,18 @@ export default new Command({
                 let feedbackWordsCount = (submissionFeedback?.[0]?.total ?? 0) + (rejectionFeedback?.[0]?.total ?? 1)
                 let feedbackWordsAverage = feedbackWordsCount > 0 ? feedbackWordsTotal / feedbackWordsCount : 0
 
-                userData = {} as ReviewerInterface
-                userData.reviews = (acceptanceCount?.[0]?.total ?? 0) + (rejectionCount?.[0]?.total ?? 0)
-                userData.acceptances = acceptanceCount?.[0]?.total ?? 0
-                userData.rejections = rejectionCount?.[0]?.total ?? 0
-                userData.feedbackCharsAvg = feedbackCharsAverage
-                userData.feedbackWordsAvg = feedbackWordsAverage
-                userData.qualityAvg = averages?.[0]?.quality_average ?? 0
-                userData.complexityAvg = averages?.[0]?.complexity_average ?? 0
+                reviewerUserStats = {} as ReviewerStatsInterface
+                reviewerUserStats.reviews = (acceptanceCount?.[0]?.total ?? 0) + (rejectionCount?.[0]?.total ?? 0)
+                reviewerUserStats.acceptances = acceptanceCount?.[0]?.total ?? 0
+                reviewerUserStats.rejections = rejectionCount?.[0]?.total ?? 0
+                reviewerUserStats.feedbackCharsAvg = feedbackCharsAverage
+                reviewerUserStats.feedbackWordsAvg = feedbackWordsAverage
+                reviewerUserStats.qualityAvg = averages?.[0]?.quality_average ?? 0
+                reviewerUserStats.complexityAvg = averages?.[0]?.complexity_average ?? 0
             }
 
             // return if user does not exist
-            if (!userData) {
+            if (!reviewerUserStats) {
                 return i.editReply({
                     embeds: [
                         {
@@ -482,21 +482,21 @@ export default new Command({
                     {
                         title: `RESULT OF AUDIT`,
                         description: `\`${user.username}#${user.discriminator}\` has :tada: ***${
-                            userData.reviews
+                            reviewerUserStats.reviews
                         }***  :tada: reviews in ${guild.emoji} | ${guildName}
                         
                         !!\n\nNumber of acceptances: :white_check_mark: ***${
-                            userData.acceptances || 0
+                            reviewerUserStats.acceptances || 0
                         }***  :white_check_mark: !!!\nNumber of rejections: :x: ***${
-                            userData.rejections || 0
+                            reviewerUserStats.rejections || 0
                         }***  :x:\nAverage feedback characters: :keyboard: ***${
-                            userData.feedbackCharsAvg?.toFixed(3) || 0
+                            reviewerUserStats.feedbackCharsAvg?.toFixed(3) || 0
                         }***  :keyboard:\nAverage feedback words: :pencil: ***${
-                            userData.feedbackWordsAvg?.toFixed(3) || 0
+                            reviewerUserStats.feedbackWordsAvg?.toFixed(3) || 0
                         }*** :pencil:\nAverage quality: :gem: ***${
-                            userData.qualityAvg?.toFixed(3) || 0
+                            reviewerUserStats.qualityAvg?.toFixed(3) || 0
                         }*** :gem:\nAverage complexity: :smiley_cat: ***${
-                            userData.complexityAvg?.toFixed(3) || 0
+                            reviewerUserStats.complexityAvg?.toFixed(3) || 0
                         }*** :smiley_cat:`,
                         footer: {
                             text: 'average feedback calculations exclude any reviews without feedback.'

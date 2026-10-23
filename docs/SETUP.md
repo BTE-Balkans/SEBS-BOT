@@ -31,8 +31,7 @@ The guild data contains the following properties:
 > - **plotsChannel**: The ID of the plots channel
 > - **formattingMsg**: Link to a Discord message specifying how to format a submission channel
 > - **accentColor**: The color to use in embeds, containers, etc. in HEX format, ex. `#ac707e`
-> - **reviewerRoles**: A list of reviewer role ID's
-> - **helperRoles**: A list of helper role ID's
+> - **roles**: A  list of system roles (Admin, Staff, Helper, etc.) and their associated Discord roles ID's
 > - **rank(1-5)** : The builder ranks form 1 to 5 =>
 >   - id: The ID of the Discord role associated with the rank
 >   - points: The threshold a builder must reach to obtain the rank
@@ -101,7 +100,7 @@ With the Discord server peppered and bot started, you can pass the gathered info
 Once done use the `/setup info` to confirm the server setup. 
 
 ### Trial system
-For helpers to be shown in the open builder application survey, they must first be manually added. This is done via the `/setup setuphelper` command (**The user must have at min one helper role**). 
+For helpers to be shown in the open builder application survey, they must first be manually marked as active. This is done via the `/setup helperstatus` command (**The user must have a helper role**). 
 > **Note**: Once the user has been setup as helper, they cannot be removed. Only the status can be set to inactive via the `/setup helperstatus` command. This will hide the helper in the builder application survey.
 
 Now head to the channel where you want the the `Open application` message to be shown and finally use the command `/setup openapplicationmessage`.

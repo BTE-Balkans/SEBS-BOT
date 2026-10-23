@@ -32,4 +32,4 @@ export interface PlotInterface {
     taskmsg?: string
 }
 
-export { Plot }
+export default Plot

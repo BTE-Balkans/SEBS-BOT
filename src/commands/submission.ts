@@ -1,13 +1,11 @@
 import { Message, TextChannel, User } from "discord.js";
 import { globalArgs, submissionIndexArg } from "../review/options.js";
 import Command from "../struct/Command.js";
-import { Plot, PlotInterface } from "../struct/Plot.js";
+import Plot, { PlotInterface } from "../struct/Plot.js";
 import Submission, { ParticipantType, SubmissionInterface } from "../struct/Submission.js";
 import { checkIfRejected } from "../utils/checkForSubmission.js";
 import Responses from "../utils/responses.js";
 import { parseContributors, parseEditBuild } from "../utils/parseBuildMessage.js";
-import { createSubmissionContainer } from "../utils/createMessageContainers.js";
-import Builder, { BuilderInterface } from "../struct/Builder.js";
 import { updateSubmissionMsg } from "../review/handleSubmissionMsg.js";
 import { updateCollaborators } from "../utils/updateCollaborators.js";
 

@@ -95,6 +95,13 @@ class Command {
                             .setDescription(opt.description)
                             .setRequired(opt.required)
                     )
+                } else if(opt.optionType == 'role') {
+                    builder.addRoleOption((option) =>
+                        option
+                            .setName(opt.name)
+                            .setDescription(opt.description)
+                            .setRequired(opt.required)
+                    )
                 }
             })
         }

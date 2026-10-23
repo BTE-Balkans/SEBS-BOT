@@ -1,4 +1,5 @@
 import Bot from '../struct/Client.js'
+import Guild, { GuildInterface, SystemRole } from '../struct/Guild.js'
 import { Interaction, MessageFlags, ButtonInteraction, ClientUser } from 'discord.js'
 import { requestBuilderForm } from '../trial/requestBuilderForm.js'
 import { closeApplication } from '../trial/closeApplication.js'
@@ -38,7 +39,7 @@ export default async function execute(client: Bot, interaction: Interaction) {
             return interaction.reply('Commands must be used in servers.')
         }
 
-        const guildData = client.guildsData.get(interaction.guild.id)
+        const guildData : GuildInterface = client.guildsData.get(interaction.guild.id)
         if (!guildData) return interaction.reply('This server is not registered')
 
         const command = client.commands.get(interaction.commandName)
@@ -48,12 +49,18 @@ export default async function execute(client: Bot, interaction: Interaction) {
             if (command.reviewer == true || command.admin == true || command.helper == true) {
                 const member = await interaction.guild.members.fetch(interaction.user.id)
                 let hasPerms = false
+
+                
+                let helperRoles : string[] = guildData.roles?.find((roles) => roles.id == SystemRole.Helper)?.roles
                 
                 if(member.roles.cache.has(client.admin))
                     hasPerms = true
-                else if(command.reviewer && member.roles.cache.some(role => guildData.reviewerRoles.includes(role.id)))
-                    hasPerms = true
-                else if(command.helper && member.roles.cache.some(role => guildData.helperRoles.includes(role.id)))
+                else if(command.reviewer) {
+                    //If command is meant for reviewers, also check if user has a helper role
+                    let reviewerRoles = guildData.roles.find((roles) => roles.id == SystemRole.Reviewer)?.roles
+                    if(member.roles.cache.some(role => reviewerRoles?.includes(role.id)) || member.roles.cache.some(role => helperRoles?.includes(role.id)))
+                        hasPerms = true
+                } else if(command.helper && member.roles.cache.some(role => helperRoles?.includes(role.id)))
                     hasPerms = true
 
                 if (!hasPerms) {

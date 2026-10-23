@@ -1,10 +1,12 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Interaction, MessageFlags, ThreadChannel } from "discord.js";
-import Bot from "../struct/Client.js";
-import Builder, { BuilderInterface } from "../struct/Builder.js";
-import { sendDm } from "./sendDm.js";
-import { Plot } from "../struct/Plot.js";
-import { closeOpenPlots } from "./handlePlot.js";
-import Responses from "../utils/responses.js";
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Interaction, MessageFlags, ThreadChannel } from "discord.js"
+import Bot from "../struct/Client.js"
+import GuildPlayer, { GuildPlayerInterface } from "../struct/GuildPlayer.js"
+import Application, { ApplicationInterface } from "../struct/Application.js"
+import Plot from "../struct/Plot.js"
+import { sendDm } from "./sendDm.js"
+import { closeOpenPlots } from "./handlePlot.js"
+import { getBuilderRankFromRoles } from "../utils/getBuilderRankFromRoles.js"
+import Responses from "../utils/responses.js"
 
 async function closedApplication(client: Bot, deletedThread : boolean = false, i?: Interaction, thread? : ThreadChannel) {
     //Get the thread channel
@@ -14,7 +16,7 @@ async function closedApplication(client: Bot, deletedThread : boolean = false, i
     const guildData = client.guildsData.get(thread.guildId)
 
     //Check if thread channel is associated with a builder thread
-    const builder : BuilderInterface = await Builder.findOne({guildId: thread.guildId, threadId: thread.id }).lean()
+    const builderApplication : ApplicationInterface = await Application.findOne({guildId: thread.guildId, threadId: thread.id }).lean()
 
     let threadID : string = null
     let closed : boolean = false
@@ -22,14 +24,14 @@ async function closedApplication(client: Bot, deletedThread : boolean = false, i
     //Check if the thread was deleted
     if(deletedThread) {
         //If application was not already closed, mark is as closed
-        if(builder?.applicationClosed) {
+        if(builderApplication?.applicationClosed) {
             closed = true
         }
     }else{
-        threadID = builder.threadId
+        threadID = builderApplication.threadId
 
         //If application was already closed, send reply
-        if(builder?.applicationClosed) {
+        if(builderApplication?.applicationClosed) {
             if(i && i.isButton())
                 return Responses.embed(i, '**The application is already closed**', guildData.accentColor)
         }else {
@@ -38,11 +40,11 @@ async function closedApplication(client: Bot, deletedThread : boolean = false, i
     }
 
     //Mark the builder thread id as null only if the thread was deleted, and mark the application as closed
-    await Builder.updateOne({ id: builder.id, guildId: builder.guildId }, { $set : { 'threadId' : threadID, 'applicationClosed' : true }}, { upsert: true })
+    await Application.updateOne({ id: builderApplication.id, guildId: builderApplication.guildId }, { $set : { 'threadId' : threadID, 'applicationClosed' : true }}, { upsert: true })
 
     if(closed) {
         //If there are any assigned plots that are not yet complete, remove their assigned builder 
-        const plotLinks = await closeOpenPlots(client, builder, guildData)
+        const plotLinks = await closeOpenPlots(client, builderApplication, guildData)
         let plotsLinksMsg : string = ''
         if(plotLinks.length > 0) {
             for(let plotLink of plotLinks) {
@@ -50,21 +52,21 @@ async function closedApplication(client: Bot, deletedThread : boolean = false, i
             }
         }
 
-        //Find the guild member of the builder
-        const builderMember = await thread.guild.members.fetch(builder.id)
-        if(builderMember) {
+        //Find the guild member of the user
+        const userGuildMember = await thread.guild.members.fetch(builderApplication.id)
+        if(userGuildMember) {
             let builderMessage = 'Your builder application was closed'
             if(plotLinks.length) {
                 builderMessage += ` \n> The following plots have been revoked: ${plotsLinksMsg}`
             }
 
             //Send dm to member, notifying them of the builder application closure
-            await sendDm(builderMember, guildData, builderMessage, 'Builder Application Closure')
+            await sendDm(userGuildMember, guildData, builderMessage, 'Builder Application Closure')
 
             //Find the helper guild and notify them of the user closing their application
-            const helper = await thread.guild.members.fetch(builder.helperId)
+            const helper = await thread.guild.members.fetch(builderApplication.helperId)
             if(helper) {
-                let helperMessage = `**${ (!deletedThread) ? `[${thread.name}](${thread.url})` : `${thread.name}(${builderMember})`} closed their application**`
+                let helperMessage = `**${ (!deletedThread) ? `[${thread.name}](${thread.url})` : `${thread.name}(${userGuildMember})`} closed their application**`
                 if(plotLinks.length > 0) {
                     helperMessage += ` \n> The following open plots have been left unfinished. Clear them before resigning them: ${plotsLinksMsg}`
                 }
@@ -98,8 +100,9 @@ async function closedApplication(client: Bot, deletedThread : boolean = false, i
             }
 
             let res = '**Builder Application Status: Closed**'
-            //Only send the reopen application button if the builder is still a junior builder
-            if(builder.rank == -1)
+            let rank = getBuilderRankFromRoles(userGuildMember, guildData)
+            //Only send the reopen application button if the user is still a applicant
+            if(rank == -1)
                 return await thread.send({embeds: [Responses.createEmbed(res, guildData.accentColor).toJSON()], components: [row.toJSON()]})
             else
                 return await thread.send({embeds: [Responses.createEmbed(res, guildData.accentColor).toJSON()]})

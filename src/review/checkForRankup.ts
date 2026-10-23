@@ -1,7 +1,7 @@
 import { CommandInteraction, GuildMember } from 'discord.js'
 import { GuildInterface } from '../struct/Guild.js'
 import Submission from '../struct/Submission.js'
-import Builder from '../struct/Builder.js'
+import BuilderStats from '../struct/BuilderStats.js'
 import { title } from 'process'
 import Responses from '../utils/responses.js'
 import { submissionBuildersMatch } from './options.js'
@@ -41,14 +41,14 @@ async function checkForRankup(
         return i.followUp('member is no longer in this server')
     }
 
-    // get latest points total for the builder in order to check for rankup
-    const builder = await Builder.findOne({
+    // get latest points total for the builder stats in order to check for rankup
+    const builderStats = await BuilderStats.findOne({
         id: member.id,
         guildId: guild.id
     }).lean()
 
     // if builder doesn't exist in db yet, they have 0 points
-    const pointsTotal: number = builder?.pointsTotal || 0
+    const pointsTotal: number = builderStats?.pointsTotal || 0
 
     // otherwise, proceed with checking for rankup
     if (

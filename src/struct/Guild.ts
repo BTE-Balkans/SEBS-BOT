@@ -11,8 +11,7 @@ const Guild = mongoose.model<GuildInterface>(
         plotsChannel: String,
         formattingMsg: String,
         accentColor: String,
-        reviewerRoles: [String],
-        helperRoles: [String],
+        roles: { type: [ new mongoose.Schema({id: {type: Number, enum: [0, 1, 2, 3, 4, 5, 6, 7, 8]}, roles: [String]}, { _id: false })], default: [] },
         rank1: { id: String, points: Number, name: String },
         rank2: { id: String, points: Number, name: String },
         rank3: { id: String, points: Number, name: String },
@@ -31,14 +30,30 @@ export interface GuildInterface {
     plotsChannel: string
     formattingMsg: string
     accentColor: string
-    reviewerRoles: string[]
-    helperRoles: string[]
+    roles: SystemGuildRoles[]
     rank1: Rank
     rank2: Rank
     rank3: Rank
     rank4: Rank
     rank5: Rank
     applicationFormatMsg: ApplicationFormatMessage
+}
+
+export enum SystemRole {
+    Admin = 0,
+    Staff = 1,
+    Moderator = 2,
+    Helper = 3,
+    Media = 4,
+    Reviewer = 5,
+    Mayor = 6,
+    Builder = 7,
+    Applicant = 8
+}
+
+export interface SystemGuildRoles {
+    id: SystemRole
+    roles: string[]
 }
 
 export interface Rank {

@@ -1,10 +1,12 @@
 import { CommandInteraction } from 'discord.js'
-import Reviewer, { ReviewerInterface } from '../struct/Reviewer.js'
+import GuildPlayer, { GuildPlayerInterface } from '../struct/GuildPlayer.js'
+import ReviewerStats, { ReviewerStatsInterface } from '../struct/ReviewerStats.js'
 import Submission, { SubmissionInterface } from '../struct/Submission.js'
 import { countWords } from '../utils/countWords.js'
 import Rejection from '../struct/Rejection.js'
+import { insertReviewerStats } from './insertReviewerStats.js'
 
-async function updateReviewerAverages(reviewer: ReviewerInterface) {
+async function updateReviewerAverages(reviewer: GuildPlayerInterface) {
 
     let averages = await Submission.aggregate([
         {
@@ -78,7 +80,7 @@ async function updateReviewerAverages(reviewer: ReviewerInterface) {
         qualityAverage = averages[0].quality_average
     }
 
-    await Reviewer.updateOne({
+    await ReviewerStats.updateOne({
         id: reviewer.id,
         guildId: reviewer.guildId
     }, {
@@ -102,7 +104,7 @@ async function updateReviewerForAcceptance(
     submissionData: SubmissionInterface,
     i: CommandInteraction
 ) {
-    // if review is edit, get previous reviewer and remove the original review from their stats
+    // if review is edit, get previous reviewer stats and remove the original review from it
     // do this first in case editor is same as reviewer: this order of doing things works properly
     if (submissionData.edit) {
         await updateReviewerForPurge(originalSubmission)
@@ -110,38 +112,30 @@ async function updateReviewerForAcceptance(
 
     // now that edit thing is done, add new stats to reviewer
     // get the reviewer to update it
-    const reviewer: ReviewerInterface = await Reviewer.findOne({
+    const reviewer: GuildPlayerInterface = await GuildPlayer.findOne({
         id: submissionData.reviewer,
         guildId: submissionData.guildId
-    }).exec()
+    }).lean()
 
     // if reviewer is brand-new fresh out of the oven newbie, don't need to calculate avgs
-    if (!reviewer) {
-        await Reviewer.updateOne(
-            {
-                id: submissionData.reviewer,
-                guildId: submissionData.guildId
-            },
-            {
-                $set: {
-                    acceptances: 1,
-                    rejections: 0,
-                    complexityAvg: submissionData.complexity,
-                    qualityAvg: submissionData.quality,
-                    feedbackCharsAvg: submissionData.feedback.length,
-                    feedbackWordsAvg: countWords(submissionData.feedback),
-                    reviews: 1,
-                    reviewsWithFeedback: 1
-                }
-            },
-            { upsert: true }
-        ).exec()
-    } else {
+    let insert = await insertReviewerStats(
+        submissionData.reviewer, 
+        submissionData.guildId,
+        1, 
+        0, 
+        submissionData.complexity, 
+        submissionData.quality,
+        submissionData.feedback.length,
+        countWords(submissionData.feedback), 
+        1, 
+        1
+    )
+    if (!insert.newReviewer) {
         // otherwise, reviewer already has stats so update the avgs and everything
         await updateReviewerAverages(reviewer)
 
-        // otherwise, increment acceptances, reviews, withfeedback, and set avgs to new avg
-        await Reviewer.updateOne(
+        // otherwise, increment acceptances, reviews, with feedback, and set avgs to new avg
+        await ReviewerStats.updateOne(
             {
                 id: submissionData.reviewer,
                 guildId: submissionData.guildId
@@ -158,16 +152,16 @@ async function updateReviewerForAcceptance(
 }
 
 /**
- * update reviewer doc for a declined review, add the feedback to their stats
+ * update reviewer stats for a declined review, add the feedback to their stats
  * @param reviewer
  * @param feedback
  */
-async function updateReviewerForRejection(reviewer: ReviewerInterface, feedback: string) {
+async function updateReviewerForRejection(reviewer: GuildPlayerInterface, feedback: string) {
     // add feedback to the reviewer's avgs
     await updateReviewerAverages(reviewer)
 
     // add a rejection and a review
-    await Reviewer.updateOne(
+    await ReviewerStats.updateOne(
         {
             id: reviewer.id,
             guildId: reviewer.guildId
@@ -188,13 +182,13 @@ async function updateReviewerForRejection(reviewer: ReviewerInterface, feedback:
  */
 async function updateReviewerForPurge(purgedSubmission: SubmissionInterface) {
     // get the reviewer to purge
-    const reviewer: ReviewerInterface = await Reviewer.findOne({
+    const reviewer: GuildPlayerInterface = await GuildPlayer.findOne({
         id: purgedSubmission.reviewer,
         guildId: purgedSubmission.guildId
-    }).exec()
+    }).lean()
 
-    // update old reviewer doc
-    await Reviewer.updateOne(
+    // update old reviewer stats by removing the review from their stats
+    await ReviewerStats.updateOne(
         { id: reviewer.id, guildId: purgedSubmission.guildId },
         {
             $inc: {
@@ -205,7 +199,7 @@ async function updateReviewerForPurge(purgedSubmission: SubmissionInterface) {
         }
     ).exec()
 
-    // update old reviewer doc pt 2 because mongoose cant $set and $inc in 1 query
+    // update old reviewer stats pt 2 because mongoose cant $set and $inc in 1 query
     await updateReviewerAverages(reviewer)
 }
 

@@ -1,8 +1,10 @@
 import { ActionRowBuilder, ButtonInteraction, LabelBuilder, ModalBuilder, resolveColor, TextInputBuilder, TextInputStyle } from "discord.js";
 import Bot from "../struct/Client.js";
-import Builder from "../struct/Builder.js";
+import GuildPlayer from "../struct/GuildPlayer.js";
+import MinecraftPlayer from "../struct/MinecraftPlayer.js";
+import { GuildInterface, SystemRole } from "../struct/Guild.js";
 import { getBuilderRankFromRoles } from "./getBuilderRankFromRoles.js";
-import { GuildInterface } from "../struct/Guild.js";
+import insertGuildPlayer from "./insertGuildPlayer.js";
 import Responses from "./responses.js";
 
 /**
@@ -42,11 +44,15 @@ async function openBuilderMinecraftUsernameModal(client: Bot, i: ButtonInteracti
         const member = await guild.members.fetch(i.user.id)
 
         //Find if guild member has any builder rank, and get It's rank index [0-4]
-        //This is done because if a builder doesn't have a Minecraft username set yet, It is assumed they are an existing builder
+        //This is done because if a builder doesn't have a Minecraft username set yet, It is assumed they are an existing builder for the guild
         let rank = getBuilderRankFromRoles(member, guildData)
         
         //Update the builder minecraft username and rank
-        await Builder.updateMany({id: i.user.id }, {'mcUsername': mcUsername, 'rank': rank}, { upsert: true})
+        await MinecraftPlayer.updateOne({id: i.user.id}, {'username': mcUsername}, {upsert: true})
+        if(rank == -1) 
+            await GuildPlayer.updateOne({id: i.user.id, guildId: guildData.id}, {}, {upsert: true})
+        else
+            await GuildPlayer.updateOne({id: i.user.id, guildId: guildData.id}, { '$addToSet': { 'roles': SystemRole.Builder }, '$set': { 'rank': rank } }, {upsert: true})
         
         await i.editReply({components: []})
         return Responses.minecraftUsernameUpdated(res, mcUsername, guildData, guildData.accentColor)

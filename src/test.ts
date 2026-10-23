@@ -1,17 +1,17 @@
+import { setServers } from 'node:dns/promises'
 import Bot from "./struct/Client.js"
-import Helper from "./struct/Helper.js"
-import config from "../config.js"
 import mongoose from "mongoose"
-import { Plot } from "./struct/Plot.js"
+import GuildPlayer from "./struct/GuildPlayer.js"
+import { SystemRole } from "./struct/Guild.js"
+
+//FIX querySrv ECONNREFUSED error in mongoose
+//https://alexbevi.com/blog/2023/11/13/querysrv-errors-when-connecting-to-mongodb-atlas/
+setServers(["1.1.1.1", "8.8.8.8"])
 
 async function test() {
     const client = new Bot()
     console.log('Started test')
     await client.loadDatabase()
-
-    //let plots = await Plot.find({builder: "194538217867837440", $or: [ {complete: null}, {complete: false}]})
-
-    //console.log(plots)
 
     console.log('Test done')
 

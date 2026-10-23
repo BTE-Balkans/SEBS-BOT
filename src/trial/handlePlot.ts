@@ -1,6 +1,8 @@
 import { EmbedBuilder, Guild, GuildBasedChannel, GuildMember, User, Interaction, Message, MessageFlags, TextChannel, TextThreadChannel, ThreadChannel, ButtonBuilder, ButtonStyle, ActionRowBuilder, resolveColor, AttachmentBuilder, ContainerComponent, MediaGalleryComponent, APIEmbedField } from "discord.js";
-import Builder, { BuilderInterface } from "../struct/Builder.js";
-import { Plot, PlotInterface } from "../struct/Plot.js";
+import Application, { ApplicationInterface } from "../struct/Application.js";
+import MinecraftPlayer, { MinecraftPlayerInterface } from "../struct/MinecraftPlayer.js";
+import BuilderStats, { BuilderStatsInterface } from "../struct/BuilderStats.js";
+import Plot, { PlotInterface } from "../struct/Plot.js";
 import { GuildInterface } from "../struct/Guild.js";
 import { addPlotClaimedReaction } from "./addPlotClaimedReaction.js";
 import {createPlotContainer, createSubmissionContainer} from "../utils/createMessageContainers.js";
@@ -20,16 +22,16 @@ import { getPointsBreakdown } from "../utils/getPointsBreakdown.js";
  * This removes the buttons on the plot message to disable assigning, editing or deleting the plot via the UI
  * @param i The interaction that start the claim, ex an command or a button
  * @param plot The plot info
- * @param builder The builder info
+ * @param application The application info
  * @param helper The guild member of the builder helper
  * @param guildData The info of the guild
  * @param builderThread The optional builder thread. If It's null, it fetches the thread channel from the guild
  * @param plotsChannel The optional channel of the plots. If It's null, it fetches the text channel from the guild
  * @returns The markdown formatted string of the result of the action, ex error or success
  */
-async function claimPlot(i: Interaction, client: Bot, plot: PlotInterface, builder: BuilderInterface, helper: GuildMember, guildData: GuildInterface, builderThread?: ThreadChannel, plotsChannel?: GuildBasedChannel) : Promise<string> {
+async function claimPlot(i: Interaction, client: Bot, plot: PlotInterface, application: ApplicationInterface, helper: GuildMember, guildData: GuildInterface, builderThread?: ThreadChannel, plotsChannel?: GuildBasedChannel) : Promise<string> {
     //Prevent the interaction user from claiming plot for the builder, if user is not the helper of the builder
-    if(builder.helperId != i.user.id)
+    if(application.helperId != i.user.id)
         return '**User is not helper of builder**'
 
 
@@ -38,21 +40,21 @@ async function claimPlot(i: Interaction, client: Bot, plot: PlotInterface, build
         return '**Plot is already assigned to another builder.**  \nOnly plots marked with 🟢 are free'
 
     //Check if plot was assigned to the same builder
-    if(plot.builder == builder.id)
+    if(plot.builder == application.id)
         return '**Plot is already assigned to the builder.**  \nOnly plots marked with 🟢 are free'
 
-    if(plot.difficulty > builder.initialSelfRate)
-        return `**The difficulty ${plot.difficulty} of the plot is higher then the initial self rate ${builder.initialSelfRate} of the builder**`
+    if(plot.difficulty > application.initialSelfRate)
+        return `**The difficulty ${plot.difficulty} of the plot is higher then the initial self rate ${application.initialSelfRate} of the user**`
     
     //Claim the plot
-    plot.builder = builder.id
-    const plotRes = await Plot.updateOne({id: plot.id, guildId: guildData.id}, {'$set' : { 'builder': builder.id}})
+    plot.builder = application.id
+    const plotRes = await Plot.updateOne({id: plot.id, guildId: guildData.id}, {'$set' : { 'builder': application.id}})
     if(plotRes.acknowledged) {
 
         //If builder thread is null, fetch it
         if(builderThread == null) {
             const builderChannel = await i.guild.channels.fetch(guildData.buildersChannel) as TextChannel
-            builderThread = await builderChannel.threads.fetch(builder.threadId)
+            builderThread = await builderChannel.threads.fetch(application.threadId)
         }
 
         //If plot channel is null, fetch it
@@ -64,13 +66,14 @@ async function claimPlot(i: Interaction, client: Bot, plot: PlotInterface, build
         let taskMsg = await builderThread.send({embeds: [newTaskEmbed.toJSON()], components: []})
         //Update plot with the id to the task message
         await Plot.updateOne({id: plot.id, guildId:guildData.id}, { $set: { 'taskmsg': taskMsg.id}})
-        const builderMember : GuildMember = await i.guild.members.fetch(builder.id);
+        const builderMember : GuildMember = await i.guild.members.fetch(application.id);
 
         if(plotsChannel.isTextBased()) {
             //Get the plot message and mark it as claimed
             const msg = await plotsChannel.messages.fetch(plot.id)
             const plotAuthor : GuildMember = await i.guild.members.fetch(plot.plotter)
-            const container = createPlotContainer(plot.address, plot.coords, plot.dateAdded, plot.refPhoto, plot.mapUrl, plotAuthor, guildData.accentColor, builderMember, builder)
+            let minecraftPlayer : MinecraftPlayerInterface = await MinecraftPlayer.findOne({id: application.id}).lean()
+            const container = createPlotContainer(plot.address, plot.coords, plot.difficulty, plot.refPhoto, plot.mapUrl, plotAuthor, guildData.accentColor, builderMember, minecraftPlayer)
             let newMsg = await msg.edit({components: [container.toJSON()], flags: MessageFlags.IsComponentsV2})
             await addPlotClaimedReaction(newMsg)
         }
@@ -86,14 +89,14 @@ async function claimPlot(i: Interaction, client: Bot, plot: PlotInterface, build
  * Find the plots that are assigned to the builder, but are still open. If there are any
  * it closes them and reopens (re-adds action buttons) to their plot message.
  * @param client The bot
- * @param builder The builder info
+ * @param builderApplication The builder application info
  * @param guildData The guild info
  * @returns An string array of the markdown links to the now reopened plot messages
  */
-async function closeOpenPlots(client: Bot, builder: BuilderInterface, guildData: GuildInterface) : Promise<string[]> {
+async function closeOpenPlots(client: Bot, builderApplication: ApplicationInterface, guildData: GuildInterface) : Promise<string[]> {
     let plotLinks = []
     //Find plots that are assigned to the builder but not yet complete (there is no submission of the builder that uses this plot)
-    let plots = await getOpenPlots(builder, guildData)
+    let plots = await getOpenPlots(builderApplication, guildData)
 
     if(plots.length > 0) {
         //Get the plots channel
@@ -103,7 +106,7 @@ async function closeOpenPlots(client: Bot, builder: BuilderInterface, guildData:
         let builderThread : TextThreadChannel
 
         try {
-            builderThread = await builderChannel.threads.fetch(builder.threadId)
+            builderThread = await builderChannel.threads.fetch(builderApplication.threadId)
         }catch(err) {}
     
         //Get links to the plot and delete the task message in the builder thread (if the thread exists)
@@ -128,20 +131,20 @@ async function closeOpenPlots(client: Bot, builder: BuilderInterface, guildData:
  * Revokes an open plot from the builder and notifies them (in the builder thread) of the revoke
  * @param i The interaction that started the revoke, ex command
  * @param plot The plot info
- * @param builder The builder info
+ * @param builderApplication The builder info
  * @param helper The guild member of the helper
  * @param guildData The guild info
  * @param builderThread The builder thread
  * @returns The markdown formatted string of the result of the revoke, ex. error or success
  */
-async function revokePlot(i: Interaction, plot: PlotInterface, builder: BuilderInterface, helper: GuildMember, guildData: GuildInterface, builderThread: ThreadChannel) : Promise<string> {
+async function revokePlot(i: Interaction, plot: PlotInterface, builderApplication: ApplicationInterface, helper: GuildMember, guildData: GuildInterface, builderThread: ThreadChannel) : Promise<string> {
     if(!plot.builder)
         return '**Plot is not assigned to a builder**'
 
-    if(builder.helperId != helper.id)
+    if(builderApplication.helperId != helper.id)
         return '**Helper is not assigned to builder**'
 
-    if(plot.builder != builder.id)
+    if(plot.builder != builderApplication.id)
         return '**Plot is not assigned to builder**'
 
     const res = await Plot.updateOne({id: plot.id, guildId: guildData.id}, {$set: { 'builder': null, 'taskmsg': null}})
@@ -150,7 +153,7 @@ async function revokePlot(i: Interaction, plot: PlotInterface, builder: BuilderI
         const builderChannel = await i.guild.channels.fetch(guildData.buildersChannel) as TextChannel
 
         try {
-            const builderThread = await builderChannel.threads.fetch(builder.threadId)
+            const builderThread = await builderChannel.threads.fetch(builderApplication.threadId)
             const taskMsg = await builderThread.messages.fetch(plot.taskmsg)
             await taskMsg.delete()
 
@@ -297,7 +300,7 @@ async function deletePlot(i: Interaction, guildData: GuildInterface, plot: PlotI
  * @param i The interaction that start the claim, ex an command or a button
  * @param client The bot
  * @param plot The plot info
- * @param builder The builder info
+ * @param builderApplication The builder application info
  * @param builderUser The builder user
  * @param helper The guild member of the builder helper
  * @param buildCount The number of builds
@@ -312,7 +315,7 @@ async function deletePlot(i: Interaction, guildData: GuildInterface, plot: PlotI
  * @param builderThread The thread of the builder
  * @returns The markdown formatted string of the result of the action, ex error or success
  */
-async function reviewPlot(i: Interaction, client: Bot, plot: PlotInterface, builder: BuilderInterface, builderUser: User, helper: GuildMember, buildCount: number, size: number, quality: number, complexity: number, bonus: number, feedback: string, buildImageUrl : string, buildImageName: string, guildData: GuildInterface, builderThread: ThreadChannel) : Promise<string>  {
+async function reviewPlot(i: Interaction, client: Bot, plot: PlotInterface, builderApplication: ApplicationInterface, builderUser: User, helper: GuildMember, buildCount: number, size: number, quality: number, complexity: number, bonus: number, feedback: string, buildImageUrl : string, buildImageName: string, guildData: GuildInterface, builderThread: ThreadChannel) : Promise<string>  {
     //Check if a submission already exists for the plot
     let plotSubmission : SubmissionInterface = await Submission.findOne({guildId: guildData.id, plotId: plot.id}).lean()
     if(plotSubmission) 
@@ -322,15 +325,15 @@ async function reviewPlot(i: Interaction, client: Bot, plot: PlotInterface, buil
         return '**Plot is not assigned to any builder**'
     
     //If the client is not test, check if user is not helper of the builder
-    if(!client.test && builder.helperId != i.user.id)
+    if(!client.test && builderApplication.helperId != i.user.id)
         return '**User is not helper of builder**'
 
     //If the client is not test, prevent the helper self-reviewing the plot
-    if(!client.test && i.user.id == builder.helperId && i.user.id == builder.id)
+    if(!client.test && i.user.id == builderApplication.helperId && i.user.id == builderApplication.id)
         return '**Cannot self review plots**'
 
     //Check if plot was assigned to the same builder
-    if(plot.builder != null && plot.builder != builder.id)
+    if(plot.builder != null && plot.builder != builderApplication.id)
         return '**Plot is not assigned to the builder**'
 
     const plotChannel = await i.guild.channels.fetch(guildData.plotsChannel) as TextChannel
@@ -378,7 +381,7 @@ async function reviewPlot(i: Interaction, client: Bot, plot: PlotInterface, buil
         index : submissionIndex,
         plotId: plot.id,
         submissionType: SubmissionType.ONE,
-        userId: builder.id,
+        userId: builderApplication.id,
         pointsTotal: pointsTotal,
         collaboratorsCount: 1,
         buildImages: [],
@@ -394,15 +397,17 @@ async function reviewPlot(i: Interaction, client: Bot, plot: PlotInterface, buil
         submissionTime: i.createdTimestamp,
     }
 
+    const minecraftPlayer : MinecraftPlayerInterface = await MinecraftPlayer.findOne({id: builderApplication.id}).lean()
+
     //Update the submissions by inserting it
-    const submissionRes = await Submission.updateOne({id: plot.id, guildId: guildData.id}, submissionData, {upsert: true}).exec()
+    const submissionRes = await Submission.updateOne({id: plot.id, guildId: guildData.id}, submissionData, {upsert: true}).lean()
     if(submissionRes.acknowledged) {
         const submissionChannel = await i.guild.channels.fetch(guildData.submitChannel) as TextChannel
         //Create the new submission container for the new submission
         const submissionContainer = await createSubmissionContainer(
             submissionIndex,
             builderUser,
-            builder,
+            minecraftPlayer,
             buildCount,
             plot.coords,
             plot.address,
@@ -428,9 +433,9 @@ async function reviewPlot(i: Interaction, client: Bot, plot: PlotInterface, buil
         //Update the submission in the db with the actual url 
         await Submission.updateOne({id: plot.id, guildId: guildData.id}, { $set: { 'buildImages': uploadedBuildImage }})
 
-        //Increment the builder points, building count and solo builds
-        await Builder.updateOne(
-            { id: builder.id, guildId: guildData.id,  },
+        //Increment the builder stats points, building count and solo builds
+        await BuilderStats.updateOne(
+            { id: builderApplication.id, guildId: guildData.id,  },
             {
                 $inc: {
                     pointsTotal: pointsTotal,
@@ -440,20 +445,24 @@ async function reviewPlot(i: Interaction, client: Bot, plot: PlotInterface, buil
             }
         ).exec()
 
-        builder.buildingCount = (builder.buildingCount != null ? builder.buildingCount : 0) + 1
-        builder.pointsTotal = (builder.pointsTotal != null ? builder.pointsTotal : 0) + pointsTotal
-        builder.soloBuilds = (builder.soloBuilds != null ? builder.soloBuilds : 0) + 1
+        let builderStats = await BuilderStats.findOne({id: builderApplication.id, guildId: guildData.id}).lean()
 
-        let reachedMin = builder.pointsTotal >= 8
-        let pointsToGo = 8 - builder.pointsTotal
+
+
+        builderStats.buildingCount = builderStats.buildingCount != null ? builderStats.buildingCount : 0
+        builderStats.pointsTotal = builderStats.pointsTotal != null ? builderStats.pointsTotal : 0
+        builderStats.soloBuilds = builderStats.soloBuilds != null ? builderStats.soloBuilds : 0
+
+        let reachedMin = builderStats.pointsTotal >= 8
+        let pointsToGo = 8 - builderStats.pointsTotal
 
 
         let reply = `Your assigned plot \`${plot.address}\` has been reviewed. \n`
 
         if(reachedMin)
-            reply += `You have now reached **${builder.pointsTotal}/8** total points, the minimum required points to become a full builder.`
+            reply += `You have now reached **${builderStats.pointsTotal}/8** total points, the minimum required points to become a full builder.`
         else
-            reply += `You have now gained **${builder.pointsTotal}/8** total points, **${pointsToGo}** more to go.`
+            reply += `You have now gained **${builderStats.pointsTotal}/8** total points, **${pointsToGo}** more to go.`
 
         reply += `\n\n__Feedback:__ \`${feedback}\`\n__[Submission #${submissionIndex}](<${submissionMessage.url}>)__\n\n*__Points breakdown:__*`
 
@@ -478,7 +487,7 @@ async function reviewPlot(i: Interaction, client: Bot, plot: PlotInterface, buil
         //Send the progress embed to the builder
         builderThread.send({embeds: [progressEmbed.toJSON()], components: []})
 
-        const builderMember : GuildMember = await i.guild.members.fetch(builder.id);
+        const builderMember : GuildMember = await i.guild.members.fetch(builderApplication.id);
 
         //And return the progress report to the helper
         let res = `The builder ${builderMember} has gained **${pointsTotal} points** for the plot `
@@ -497,10 +506,10 @@ async function reviewPlot(i: Interaction, client: Bot, plot: PlotInterface, buil
         __[Submission #${submissionIndex}](<${submissionMessage.url}>)__`
 
         if(reachedMin) 
-            res += `\n\nThe junior builder has now reached **${builder.pointsTotal}/8** total points and is qualified to become a full builder.
+            res += `\n\nThe junior builder has now reached **${builderStats.pointsTotal}/8** total points and is qualified to become a full builder.
         > ✨Use the command \`/accept\` in the builder thread to accept them`
          else
-            res += `\n\nThe junior builder has now gained **${builder.pointsTotal}/8** total points and needs to gain min **${pointsToGo}** more points.`
+            res += `\n\nThe junior builder has now gained **${builderStats.pointsTotal}/8** total points and needs to gain min **${pointsToGo}** more points.`
 
          return res
     }
@@ -553,7 +562,7 @@ async function requestPlotRelease(client: Bot, plot: PlotInterface, newPlotBuild
             $sort: { submissionTime: -1}
         }
     ])[0]
-    let submissionBuilder : BuilderInterface  = await Builder.findOne({id: submission.id, guildId: guildData.id}).lean()
+    let submissionMinecraftPlayer : MinecraftPlayerInterface = await MinecraftPlayer.findOne({id: submission.userId}).lean()
     let plotBuilderUser = await client.users.fetch(plot.builder)
     let submissionReviewer : User = (submission.reviewer != null) ? await client.users.fetch(submission.reviewer) : null
 
@@ -561,7 +570,7 @@ async function requestPlotRelease(client: Bot, plot: PlotInterface, newPlotBuild
     const submissionContainer = await createSubmissionContainer(
         submission.index, 
         plotBuilderUser, 
-        submissionBuilder, 
+        submissionMinecraftPlayer, 
         submission.buildCount,
         plot.coords, 
         plot.address, 
@@ -639,12 +648,12 @@ async function releasePlotButton(client: Bot, i: Interaction, plotId: string, ne
     return Responses.embed(i, 'You have successfully revoked the plot ownership', guildData.accentColor)
 }
 
-async function getOpenPlots(builder: BuilderInterface, guildData: GuildInterface) {
+async function getOpenPlots(builderApplication: ApplicationInterface, guildData: GuildInterface) {
     return await Plot.aggregate([
         {
             $match: {
                 guildId: guildData.id,
-                builder: builder.id
+                builder: builderApplication.id
             }
         },
         {
@@ -657,7 +666,7 @@ async function getOpenPlots(builder: BuilderInterface, guildData: GuildInterface
                             $expr: {
                                 $and: [
                                     { $eq: ["$plotId", "$$plotId"] },
-                                    { $eq: ["$userId", builder.id] },
+                                    { $eq: ["$userId", builderApplication.id] },
                                     { $eq: ["$guildId", guildData.id] }
                                 ]
                             }

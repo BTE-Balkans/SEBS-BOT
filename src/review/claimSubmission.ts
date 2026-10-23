@@ -1,8 +1,6 @@
 import { CommandInteraction, Guild, User } from "discord.js";
 import Submission, { SubmissionInterface } from "../struct/Submission.js";
 import Responses from "../utils/responses.js";
-import Builder from "../struct/Builder.js";
-import { insertBuilder } from "./insertBuilder.js";
 import { GuildInterface } from "../struct/Guild.js";
 
 /**

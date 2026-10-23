@@ -2,8 +2,12 @@ import Bot from './struct/Client.js'
 import Submission from './struct/Submission.js'
 import Rejection from './struct/Rejection.js'
 import mongoose from 'mongoose'
-import Builder from './struct/Builder.js'
-import Reviewer from './struct/Reviewer.js'
+import GuildPlayer from './struct/GuildPlayer.js'
+import ReviewerStats from './struct/ReviewerStats.js'
+import HelperStats from './struct/HelperStats.js'
+import Application from './struct/Application.js'
+import Plot from './struct/Plot.js'
+import BuilderStats from './struct/BuilderStats.js'
 
 /**
  * standalone script to merge all users and submissions from one team into another
@@ -23,11 +27,27 @@ async function run(purgeFrom) {
         { guildId: purgeFrom }
     )
 
-    await Builder.deleteMany(
+    await Plot.deleteMany(
         { guildId: purgeFrom }
     )
 
-    await Reviewer.deleteMany(
+    await GuildPlayer.deleteMany(
+        { guildId: purgeFrom }
+    )
+
+    await ReviewerStats.deleteMany(
+        { guildId: purgeFrom }
+    )
+
+    await HelperStats.deleteMany(
+        { guildId: purgeFrom }
+    )
+
+    await BuilderStats.deleteMany(
+        { guildId: purgeFrom }
+    )
+
+    await Application.deleteMany(
         { guildId: purgeFrom }
     )
 

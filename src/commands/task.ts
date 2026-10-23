@@ -1,7 +1,8 @@
 import { TextChannel, ThreadChannel } from "discord.js";
 import Command from "../struct/Command.js";
-import { Plot, PlotInterface } from "../struct/Plot.js";
-import Builder, { BuilderInterface } from "../struct/Builder.js";
+import Plot, { PlotInterface } from "../struct/Plot.js";
+import Application, {ApplicationInterface } from "../struct/Application.js";
+import GuildPlayer, { GuildPlayerInterface } from "../struct/GuildPlayer.js";
 import Responses from "../utils/responses.js";
 import { claimPlot, reopenPlotMessage, reviewPlot, revokePlot } from "../trial/handlePlot.js";
 import { plotArgs } from "../trial/options.js";
@@ -11,22 +12,22 @@ import mongoose from "mongoose";
 
 export default new Command({
     name: 'task',
-    description: 'Manage junior builder tasks',
+    description: 'Manage candidate tasks',
     helper : true,
     subCommands: [
         {
             name: 'assign',
-            description: 'Assign task to junior builder',
+            description: 'Assign task to candidate',
             args: [...plotArgs]
         },
         {
             name: 'revoke',
-            description: 'Revoke task from junior builder',
+            description: 'Revoke task from candidate',
             args: [...plotArgs]
         },
         {
             name: 'review',
-            description: 'Review task given to junior builder',
+            description: 'Review task given to candidate',
             args: [
                 ...plotArgs,
                 ...oneArgs,
@@ -64,18 +65,18 @@ export default new Command({
         let plotID = options.getString('plotid')
         let plot : PlotInterface = await Plot.findOne({id: plotID, guildId: guildData.id}).lean()
         if(plot) {
-            //Find builder through thread id
-            const builder : BuilderInterface = await Builder.findOne({'guildId': guildData.id, 'threadId' : i.channelId }).lean()
+            //Find application through thread id
+            const application : ApplicationInterface = await Application.findOne({'guildId': guildData.id, 'threadId' : i.channelId }).lean()
 
             //Get the guild member for the helper
-            const helper = await i.guild.members.fetch(builder.helperId)
+            const helper = await i.guild.members.fetch(application.helperId)
 
             if(subCommand == 'assign') {
-                if(builder.applicationClosed)
+                if(application.applicationClosed)
                     return Responses.embed(i, '**The application is closed**', guildData.accentColor)
                 try {
                     //Claim the plot
-                    let res = await claimPlot(i, client, plot, builder, helper, guildData, i.channel as ThreadChannel, null)
+                    let res = await claimPlot(i, client, plot, application, helper, guildData, i.channel as ThreadChannel, null)
                     return Responses.embed(i, res, guildData.accentColor)
                 }catch(err) {
                     console.log('[TaskAssignError] ' + err)
@@ -83,7 +84,7 @@ export default new Command({
                 }
             }else if(subCommand == 'revoke') {
                 try {
-                    const res = await revokePlot(i, plot, builder, helper, guildData, i.channel as ThreadChannel)
+                    const res = await revokePlot(i, plot, application, helper, guildData, i.channel as ThreadChannel)
                     return Responses.embed(i, res, guildData.accentColor)
                 }catch(err) {
                     console.log('[TaskRevokeError] ' + err)
@@ -102,8 +103,8 @@ export default new Command({
                     //if(!buildImage.contentType.startsWith('image'))
                     //    return Responses.embed(i, 'The build screenshot attachment must be a image', guildData.accentColor)
 
-                    let builderUser = await client.users.fetch(builder.id)
-                    let res = await reviewPlot(i, client, plot, builder, builderUser, helper, buildCount, size, quality, complexity, bonus, feedback, plot.refPhoto, '82-1_rožna_dolina_rožnik_ljubljana_1922.jpg', guildData, i.channel as ThreadChannel)
+                    let builderUser = await client.users.fetch(application.id)
+                    let res = await reviewPlot(i, client, plot, application, builderUser, helper, buildCount, size, quality, complexity, bonus, feedback, plot.refPhoto, '82-1_rožna_dolina_rožnik_ljubljana_1922.jpg', guildData, i.channel as ThreadChannel)
                     return Responses.embed(i, res, guildData.accentColor)
                     
                 }catch(err) {

@@ -36,7 +36,7 @@ export default new Command({
         }
 
         // get submission from db
-        const submissionData: SubmissionInterface = await Submission.findOne({id: submissionId, guildId: i.guildId}).exec()
+        const submissionData: SubmissionInterface = await Submission.findOne({id: submissionId, guildId: i.guildId}).lean()
 
         // check if submission got rejected
         const isRejected = await checkIfRejected(submissionId, i.guildId)
@@ -50,7 +50,7 @@ export default new Command({
 
         // if its rejection, get rejection from db
         if (isRejected) {
-            const rejectionData: RejectionInterface = await Rejection.findById(submissionId).exec()
+            const rejectionData: RejectionInterface = await Rejection.findById(submissionId).lean()
 
             return Responses.embed(i, `That submission was rejected. \n\nFeedback: \`${rejectionData.feedback}\``, guildData.accentColor)
         }

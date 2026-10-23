@@ -13,6 +13,12 @@ Setup the bot for the server, admin only.
     - accentColor: The color to use in embeds, containers, etc. in HEX format, ex. `#ac707e`
     - addroleasreviewer: The ID of a role set to be marked as a reviewer
     - removeroleasreviewer: The ID of a role set to be unmarked/removed as a reviewer
+- `/setup addrole <systemrole> <discordrole>` - Add role to system role
+    - **systemrole**: The type of the system role (admin, staff, moderator, helper, media, reviewer, mayor, builder, candidate)
+    - **discordrole**: The Discord role to mark as a system role 
+- `/setup removerole <systemrole> <discordrole>` - Remove role form system role
+    - **systemrole**: The type of the system role (admin, staff, moderator, helper, media, reviewer, mayor, builder, candidate)
+    - **discordrole**: The Discord role to remove as a system role 
 - `/setup applicationformatmsg [visitservermsg] [welcomeimg] [guidelink]`  
     - visitservermsg: The Markdown text shown in the welcome msg, on how to visit the build server
     - welcomeimg: Link to an image shown in the welcome msg
@@ -22,8 +28,6 @@ Setup the bot for the server, admin only.
     - roleid: The ID of the role, corresponding to this rank level
     - points: The minimum points needed for the level
     - name: The name of the level role
-- `/setup setuphelper` - Adds and setups user as helper
-    - **user**: The user to set up as a helper (User must have at min one helper role)
 - `/setup helperstatus` - Mark helper as inactive or active
     - **user** - The helper to change their status of
     - **inactive** - True if inactive, false if active

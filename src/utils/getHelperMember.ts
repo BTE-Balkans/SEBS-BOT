@@ -1,5 +1,5 @@
 import { GuildMember, Interaction } from "discord.js"
-import { GuildInterface } from "../struct/Guild.js"
+import { GuildInterface, SystemRole } from "../struct/Guild.js"
 
 /**
  * Return the guild member of the helper from the interaction user if they have an helper role
@@ -9,7 +9,8 @@ import { GuildInterface } from "../struct/Guild.js"
  */
 export default async function getHelperMember(i: Interaction, guildData: GuildInterface) : Promise<GuildMember> {
     let userMember : GuildMember = await i.guild.members.fetch(i.user.id)
-    if(userMember.roles.cache.some((role) => guildData.helperRoles.includes(role.id)))
+    let helperRoles = guildData.roles.find((roles) => roles.id == SystemRole.Helper)?.roles
+    if(userMember.roles.cache.some((role) => helperRoles?.includes(role.id)))
         return userMember
     return null
 }

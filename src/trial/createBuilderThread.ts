@@ -1,15 +1,18 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, EmbedBuilder, GuildMember, Integration, Interaction, MessageFlags, ModalSubmitInteraction, TextChannel, TextThreadChannel, ThreadAutoArchiveDuration, ThreadChannel } from "discord.js";
-import Bot from "../struct/Client.js";
-import Builder, { BuilderInterface } from "../struct/Builder.js";
-import { GuildInterface } from "../struct/Guild.js";
-import Difficulty from "../struct/Difficulty.js";
-import Responses from "../utils/responses.js";
-import { insertBuilder } from "../review/insertBuilder.js";
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, EmbedBuilder, GuildMember, Integration, Interaction, MessageFlags, ModalSubmitInteraction, TextChannel, TextThreadChannel, ThreadAutoArchiveDuration, ThreadChannel } from "discord.js"
+import Bot from "../struct/Client.js"
+import { GuildInterface, SystemRole } from "../struct/Guild.js"
+import GuildPlayer, { GuildPlayerInterface } from "../struct/GuildPlayer.js"
+import BuilderStats, { BuilderStatsInterface } from "../struct/BuilderStats.js"
+import Application, { ApplicationInterface } from "../struct/Application.js"
+import MinecraftPlayer, { MinecraftPlayerInterface } from "../struct/MinecraftPlayer.js"
+import Difficulty from "../struct/Difficulty.js"
+import Responses from "../utils/responses.js"
+import insertGuildPlayer from "../utils/insertGuildPlayer.js"
 
 /**
  * Create or reuses an builder thread. 
  * 
- * When the builder form reaches this point, there are x options
+ * When the user reaches this point, there are 3 options:
     1. The application already exists as it was closed in the past, but the builder thread was deleted
     2. The application already exists as it was closed in the past in the builder thread, but the thread was not deleted
     3. The application doesn't exists yet
@@ -20,33 +23,36 @@ import { insertBuilder } from "../review/insertBuilder.js";
     like a new helper (the current thread helper get replaced with the new helper)
  * @param i  The interaction of the modal with the builder info, once it get's submitted
  * @param client The bot
- * @param builderForm The info of the builder
+ * @param builderStats The builder stats of the user, if they exist
+ * @param applicationForm The application form of the user, if it exists
+ * @param minecraftPlayerForm The Minecraft player info of the user, if it exists
  * @returns The ephemeral message to the link of the thread or an error (in a embed)
  */
-async function createBuilderThread(i: ModalSubmitInteraction, client: Bot, builderForm: BuilderInterface) {
+async function createBuilderThread(i: ModalSubmitInteraction, client: Bot, builderStats: BuilderStatsInterface, applicationForm: ApplicationInterface, minecraftPlayerForm: MinecraftPlayerInterface) {
     const guildData = client.guildsData.get(i.guildId)
     
     let applicationWasClosed = false
     let builderThreadExists = false
 
-    //First check if the junior builder already exists 
-    let builder : BuilderInterface = await Builder.findOne({id: i.user.id, guildId: i.guildId, rank: -1}).lean()
+    //First check if the applicant already exists 
+    let applicant : GuildPlayerInterface = await GuildPlayer.findOne({id: i.user.id, guildId: i.guildId, rank: -1, roles: SystemRole.Applicant}).lean()
+    let application : ApplicationInterface = await Application.findOne({id: i.user.id, guildId: i.guildId}).lean()
 
     //Get the builders channel
     const buildersChannel = (await i.guild.channels.fetch(guildData.buildersChannel)) as TextChannel
 
     let builderThread : TextThreadChannel
 
-    if(builder) {
+    if(applicant && application) {
         //If the application is marked as closed, reopen it
-        if(builder?.applicationClosed) {
+        if(application?.applicationClosed) {
             applicationWasClosed = true
         }
 
-        if(builder?.threadId) {
+        if(application?.threadId) {
             builderThreadExists = true
 
-            await buildersChannel.threads.fetch(builder.threadId).then(c => {
+            await buildersChannel.threads.fetch(application.threadId).then(c => {
                 builderThread = c
             }).catch(err => {
                 builderThreadExists = false;
@@ -58,14 +64,17 @@ async function createBuilderThread(i: ModalSubmitInteraction, client: Bot, build
     }
 
     //Get the helper guild member
-    let helper = await i.guild.members.fetch(builderForm.helperId)
+    let helper = await i.guild.members.fetch(applicationForm.helperId)
+
+    //Track helper if not yet tracked
+    await insertGuildPlayer(helper, guildData, SystemRole.Helper)
 
     //If the builder thread doesn't exist yet, create it
     if(!builderThreadExists)
     {
         //Else create it
         builderThread = await buildersChannel.threads.create({
-            name: `hub-${builderForm.mcUsername}`,
+            name: `hub-${minecraftPlayerForm.username}`,
             autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek,
             type: ChannelType.PrivateThread,
             reason: `Builder hub for player @${i.user.username}`
@@ -87,7 +96,7 @@ async function createBuilderThread(i: ModalSubmitInteraction, client: Bot, build
     
 
     //Create the welcome message
-    const welcomeEmbed = createWelcomeEmbed(applicationWasClosed, helper, guildData, client, i, builderForm)
+    const welcomeEmbed = createWelcomeEmbed(applicationWasClosed, helper, guildData, client, i, builderStats, applicationForm, minecraftPlayerForm)
 
     //Create the close application button
     const closeApplicationButton = new ButtonBuilder()
@@ -99,9 +108,9 @@ async function createBuilderThread(i: ModalSubmitInteraction, client: Bot, build
     builderThread.send({embeds: [welcomeEmbed.toJSON()], components: [row.toJSON()]})
     
     //Check if the helper on the existing thread, is different from the new one
-    if(builderThreadExists && builder.helperId != builderForm.helperId) {
+    if(builderThreadExists && application.helperId != application.helperId) {
         //Remove the previous helper from the thread
-        await builderThread.members.remove(builder.helperId)
+        await builderThread.members.remove(application.helperId)
         //Add the new helper to the thread
         await builderThread.members.add(helper)
 
@@ -110,16 +119,22 @@ async function createBuilderThread(i: ModalSubmitInteraction, client: Bot, build
 
     let userMember = await i.guild.members.fetch(i.user.id)
 
-    //Insert builder
-    insertBuilder(userMember, guildData)
+    //Insert the applicant if not yet inserted
+    insertGuildPlayer(userMember, guildData, SystemRole.Applicant)
 
-    //Update/upsert the builder info with the new data
-    await Builder.updateOne({id: i.user.id, guildId: i.guildId}, { 
-        '$set' : { 
-                'mcUsername': builderForm.mcUsername, 
-                'initialSelfRate' : builderForm.initialSelfRate, 
+    //Update/upsert the applicant info with the new data
+    await MinecraftPlayer.updateOne({id: i.user.id, guildId: i.guildId}, {
+        '$set' : {
+                'username': minecraftPlayerForm.username,
+            }
+        },
+        { upsert : true }
+    )
+    await Application.updateOne({id: i.user.id, guildId: i.guildId}, {
+        '$set' : {
+                'initialSelfRate' : applicationForm.initialSelfRate,
                 'threadId': builderThread.id, 
-                'helperId' : builderForm.helperId, 
+                'helperId' : applicationForm.helperId, 
                 'applicationClosed': false
             }
         },
@@ -140,7 +155,7 @@ async function createBuilderThread(i: ModalSubmitInteraction, client: Bot, build
     }
 }
 
-function createWelcomeEmbed(applicationWasClosed : boolean, helper: GuildMember, guildData : GuildInterface, client: Bot, i: ModalSubmitInteraction, builderForm : BuilderInterface) : EmbedBuilder {
+function createWelcomeEmbed(applicationWasClosed : boolean, helper: GuildMember, guildData : GuildInterface, client: Bot, i: ModalSubmitInteraction, builderStatsForm : BuilderStatsInterface, applicationForm : ApplicationInterface, minecraftPlayerForm : MinecraftPlayerInterface) : EmbedBuilder {
     let welcomeTitle = applicationWasClosed ? 
         `__**Welcome back to your renewed builder application**__ :wave:` :
         `__**Welcome to the start of your builder application**__ :wave:`
@@ -161,7 +176,7 @@ function createWelcomeEmbed(applicationWasClosed : boolean, helper: GuildMember,
 
     const welcomeEmbed = new EmbedBuilder()
         .setTitle(welcomeTitle)
-        .setDescription(`${paragraphOne} \n\n${paragraphTwo} \n\n${paragraphThree}} \n\n${paragraphFour}`)
+        .setDescription(`${paragraphOne} \n\n${paragraphTwo} \n\n${paragraphThree} \n\n${paragraphFour}`)
         .setFooter({text: guildData.name, iconURL: i.guild.iconURL()})
         .setColor(`#${guildData.accentColor}`)
         .setTimestamp(new Date())
@@ -169,16 +184,16 @@ function createWelcomeEmbed(applicationWasClosed : boolean, helper: GuildMember,
         .setFields([
             {
                 name: 'Minecraft username',
-                value: `${builderForm.mcUsername}`
+                value: `${minecraftPlayerForm.username}`
             },
             {
                 name: 'Initial self-rate',
-                value: `${builderForm.initialSelfRate}/5 (${Object.values(Difficulty)[builderForm.initialSelfRate - 1]})`
+                value: `${applicationForm.initialSelfRate}/5 (${Object.values(Difficulty)[applicationForm.initialSelfRate - 1]})`
             }
         ])
     
-    if(applicationWasClosed && builderForm.pointsTotal > 0)
-        welcomeEmbed.addFields({name: 'Total Points', value: `${builderForm.pointsTotal}/8`})
+    if(applicationWasClosed && builderStatsForm.pointsTotal > 0)
+        welcomeEmbed.addFields({name: 'Total Points', value: `${builderStatsForm.pointsTotal}/8`})
     
     return welcomeEmbed
 

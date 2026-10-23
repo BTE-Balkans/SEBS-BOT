@@ -5,12 +5,13 @@ import { Message, TextChannel } from 'discord.js'
 import { checkIfAccepted, checkIfRejected } from '../utils/checkForSubmission.js'
 import validateFeedback from '../utils/validateFeedback.js'
 import { updateReviewerForRejection } from '../review/updateReviewer.js'
-import Reviewer from '../struct/Reviewer.js'
+import GuildPlayer, { GuildPlayerInterface } from '../struct/GuildPlayer.js'
 import Responses from '../utils/responses.js'
 import submissionRejected = Responses.submissionRejected
 import { getSubmissionClaimer } from '../review/getSubmissionClaimer.js'
 import Submission from '../struct/Submission.js'
 import { globalArgs } from '../review/options.js'
+import { insertReviewerStats } from '../review/insertReviewerStats.js'
 
 export default new Command({
     name: 'decline',
@@ -62,33 +63,9 @@ export default new Command({
         }
 
         // check if reviewer has reviewed yet or not. new reviewers cannot decline as a first review
-        // because that breaks all the stats
-        let reviewer = await Reviewer.findOne({ id: i.user.id, guildId: i.guild.id }).exec()
-
-        if (!reviewer) {
-            await Reviewer.updateOne(
-                {
-                    id: i.user.id,
-                    guildId: i.guild.id
-                },
-                {
-                    $set: {
-                        acceptances: 0,
-                        rejections: 0,
-                        complexityAvg: 0,
-                        qualityAvg: 0,
-                        feedbackCharsAvg: 0,
-                        feedbackWordsAvg: 0,
-                        reviews: 0,
-                        reviewsWithFeedback: 0
-                    }
-                },
-                { upsert: true }
-            )
-
-
-            reviewer = await Reviewer.findOne({ id: i.user.id, guildId: i.guild.id }).exec()
-        }
+        // because that breaks all the stats, hence only update the reviewer stats if they have already reviewed at least once
+        await insertReviewerStats(i.user.id, i.guild.id, 0, 1, 0, 0, 0, 0, 1, 1)
+        let reviewer : GuildPlayerInterface = await GuildPlayer.findOne({id: i.user.id, guildId: i.guild.id})
 
         let submission = await Submission.findOne({id: submissionMsg.id, guildId: i.guildId})
 

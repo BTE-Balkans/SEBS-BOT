@@ -1,12 +1,14 @@
-import {APILabelComponent, ButtonInteraction, LabelBuilder, MessageFlags, ModalBuilder, Snowflake, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, TextInputBuilder, TextInputStyle, UserSelectMenuBuilder } from "discord.js";
+import {APILabelComponent, ButtonInteraction, Collection, GuildMember, LabelBuilder, MessageFlags, ModalBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, TextInputBuilder, TextInputStyle, UserSelectMenuBuilder } from "discord.js";
 import Bot from "../struct/Client.js";
-import Helper, { HelperInterface } from "../struct/Helper.js";
-import Difficulty from "../struct/Difficulty.js";
 import { createBuilderThread } from "./createBuilderThread.js";
-import Builder, { BuilderInterface } from "../struct/Builder.js";
-import DifficultyEmoji from "../utils/difficultyEmoji.js";
+import { SystemRole } from "../struct/Guild.js";
+import GuildPlayer, { GuildPlayerInterface } from "../struct/GuildPlayer.js";
+import ReviewerStats, { ReviewerStatsInterface } from "../struct/ReviewerStats.js";
+import BuilderStats, { BuilderStatsInterface } from "../struct/BuilderStats.js";
+import Application, { ApplicationInterface } from "../struct/Application.js";
+import MinecraftPlayer, { MinecraftPlayerInterface } from "../struct/MinecraftPlayer.js";
 import Responses from "../utils/responses.js";
-import { checkMinecraftUsername } from "../utils/ensureBuilderMinecraftUsername.js";
+import { getMinecraftProfile } from "../utils/ensureBuilderMinecraftUsername.js";
 import { getBuilderRankFromRoles } from "../utils/getBuilderRankFromRoles.js";
 import { acceptNonCandidate } from "./acceptBuilder.js";
 import { createDifficultySelectMenuOptions } from "../utils/createDifficultySelectMenuOptions.js";
@@ -28,28 +30,30 @@ async function openBuilderForm(i : ButtonInteraction, client: Bot) {
     let hasBuilderRole = memberRank > -1
 
 
-    let builder : BuilderInterface
-    //If member already has a builder role check if they are already registered as builder
-    //This is done to check if they have not yet set their MC username and thus are not yet fully registered
-    if(hasBuilderRole)
-        builder = await Builder.findOne({id: i.user.id, guildId: i.guildId}).lean()
+    let guildPlayer : GuildPlayerInterface
+    let minecraftPlayer : MinecraftPlayerInterface
+    //If member already has a builder role check if they are already tracked as a guild player
+    //This is done to check if they have not yet set their MC username and thus are not yet fully tracked
+    if(hasBuilderRole) {
+        guildPlayer = await GuildPlayer.findOne({id: i.user.id, guildId: i.guildId}).lean()
+        minecraftPlayer = await MinecraftPlayer.findOne({id: i.user.id}).lean()
+    }
 
     let modalLabels : APILabelComponent[] = []
 
     //Only create the full builder form if user doesn't have a builder role
     if(!hasBuilderRole) {
-        //Get helpers
-        const helpers = await Helper.aggregate([
+        //Get tracked helpers
+        const helpers = await GuildPlayer.aggregate([
             {
                 $match: {
                     guildId: guildData.id,
-                    inactive: false,
-                    id: { $ne: i.user.id} //Prevent the the interaction using being the helper 
+                    roles: SystemRole.Helper
                 }
             },
             {
                 $lookup: {
-                    from: 'builders',
+                    from: 'applications',
                     let: {helperId: '$id'},
                     pipeline: [
                         {
@@ -64,13 +68,13 @@ async function openBuilderForm(i : ButtonInteraction, client: Bot) {
                             }
                         }
                     ],
-                    as: 'builders'
+                    as: 'applications'
                 }
             },
             {
                 $project: {
                     "id": 1,
-                    openApplications: { $size: "$builders" }
+                    openApplications: { $size: "$applications" }
                 }
             },
             {
@@ -80,22 +84,30 @@ async function openBuilderForm(i : ButtonInteraction, client: Bot) {
             }
         ])
 
+        await i.guild.members.fetch();
+        //Get all guild members with a helper role
+        let helperRoles = guildData.roles.find((roles) => roles.id == SystemRole.Helper).roles
+        const helperGuildMembers = i.guild.members.valueOf().filter(user => user.roles.cache.some(role => helperRoles.includes(role.id)) && user.id != i.user.id).map(m => m)
+
         const selectHelperUser = new StringSelectMenuBuilder()
                 .setCustomId('builderform_selecthelper')
                 .setPlaceholder('Select helper')
 
-        for(let helper of helpers) {
-            //Get guild member 
-            const guildMember = await i.guild.members.fetch(helper.id)
-            if(guildMember) {
-                selectHelperUser.addOptions(
-                    new StringSelectMenuOptionBuilder({
-                        label: `${guildMember.displayName} (#${guildMember.user.username})`,
-                        description: `${helper.openApplications} open applications`,
-                        value: guildMember.id
-                    })
-                )
+        for(let guildMember of helperGuildMembers) {
+            let helper = helpers.find(h => h.id == guildMember.id)
+            if(helper?.meta) {
+                let helperMetadata = JSON.parse(helper.meta)
+                if(helperMetadata && helperMetadata.inactive == true)
+                    continue
             }
+            
+            selectHelperUser.addOptions(
+                new StringSelectMenuOptionBuilder({
+                    label: `${guildMember.displayName} (#${guildMember.user.username})`,
+                    description: `${helper ? helper.openApplications : 0} open applications`,
+                    value: guildMember.id
+                })
+            )
         }
 
         const selectHelperUserLabel = new LabelBuilder()
@@ -128,11 +140,6 @@ async function openBuilderForm(i : ButtonInteraction, client: Bot) {
 
     modalLabels.push(minecraftUsernameLabel.toJSON())
 
-    /*const filter = inter => {
-        inter.deferUpdate()
-        return inter.user.id === i.user.id
-    }*/
-
     const modal = new ModalBuilder()
         .setCustomId('builderform_modal')
         .setTitle('Builder Form')
@@ -146,22 +153,22 @@ async function openBuilderForm(i : ButtonInteraction, client: Bot) {
         await res.deferReply({flags: MessageFlags.Ephemeral})
         const mcUsername = res.fields.getTextInputValue('builderform_minecraftusername')
 
-        //Validate Minecraft username
-        let validMcUsername = await checkMinecraftUsername(mcUsername)
-        if(!validMcUsername)
+        //Validate Minecraft profile
+        let minecraftProfile = await getMinecraftProfile(mcUsername)
+        if('error' in minecraftProfile)
             return res.editReply({embeds: [ Responses.createEmbed(`**Invalid Minecraft username:** ${mcUsername}`, guildData.accentColor).toJSON() ], components: []})
 
         //If user already has a builder role but they didn't yet full register (set their MC username), 
-        // accept them as as full builder and not as an junior builder
-        if(hasBuilderRole && !builder?.mcUsername) {
-            //If builder isn't yet registered accept them using the Minecraft username
-            if(!builder) {
+        // accept them as as full builder and not as an applicant
+        if(hasBuilderRole && !minecraftPlayer?.username) {
+            //If user isn't yet registered accept them using the Minecraft username
+            if(!guildPlayer) {
                 let acceptRes = await acceptNonCandidate(i, client, i.user.id, mcUsername, guildData)
                 return Responses.embed(res, acceptRes, guildData.accentColor)
-            } else if(builder && !builder.mcUsername) {
-                //Else if the builder is registered, but doesn't have their Minecraft username yet set, 
+            } else if(guildPlayer && !minecraftPlayer.username) {
+                //Else if the user is registered, but doesn't have their Minecraft username yet set, 
                 //update their builder info
-                await Builder.updateMany({id: builder.id}, {$set: {'mcUsername': mcUsername}})
+                await MinecraftPlayer.updateMany({id: guildPlayer.id}, {$set: {'username': mcUsername}})
                 return Responses.minecraftUsernameUpdated(res, mcUsername, guildData, guildData.accentColor)
             }
 
@@ -172,28 +179,35 @@ async function openBuilderForm(i : ButtonInteraction, client: Bot) {
         const helperId = res.fields.getStringSelectValues('builderform_selecthelper').join()
         const selfRate = parseInt(res.fields.getStringSelectValues('builderform_selfrate').join())
 
-        //Temp builder form data
-        let builderForm : BuilderInterface = { 
-            id: i.user.id, 
-            guildId : i.guildId, 
-            mcUsername: mcUsername, 
-            rank: -1, 
-            dm: true, 
+        //Temp user form data
+        let minecraftPlayerForm : MinecraftPlayerInterface = {
+            id: i.user.id,
+            username: mcUsername
+        }
+
+        let applicationForm : ApplicationInterface = {
+            id: i.user.id,
+            guildId: i.guildId,
+            initialSelfRate: selfRate,
+            threadId: null,
+            helperId: helperId,
+            applicationClosed: false,
+        }
+
+        let builderStatsForm : BuilderStatsInterface = {
+            id: i.user.id,
+            guildId: i.guildId,
             pointsTotal: 0, 
             buildingCount: 0, 
             soloBuilds: 0, 
             contributions: 0, 
             roadKMs: 0, 
-            sqm: 0, 
-            initialSelfRate: selfRate, 
-            threadId : null, 
-            helperId : helperId, 
-            applicationClosed : false
+            sqm: 0
         }
         
         
         //Create the builder thread
-        return await createBuilderThread(res, client, builderForm)
+        return await createBuilderThread(res, client, builderStatsForm, applicationForm, minecraftPlayerForm)
     } catch(err) {
         if(err.code != 'InteractionCollectorError') {
             console.log(`[openBuilderFormError]: \n > ${err}`)

@@ -1,8 +1,8 @@
-import mongoose from 'mongoose'
+import mongoose from "mongoose"
 
-const Reviewer = mongoose.model<ReviewerInterface>(
-    'Reviewer',
-    new mongoose.Schema<ReviewerInterface>({
+const ReviewerStats = mongoose.model<ReviewerStatsInterface>(
+    'ReviewerStats',
+    new mongoose.Schema<ReviewerStatsInterface>({
         id: String,
         guildId: String,
         reviews: Number,
@@ -16,7 +16,7 @@ const Reviewer = mongoose.model<ReviewerInterface>(
     })
 )
 
-export interface ReviewerInterface {
+export interface ReviewerStatsInterface {
     id: string
     guildId: string
     reviews: number
@@ -29,4 +29,4 @@ export interface ReviewerInterface {
     complexityAvg: number
 }
 
-export default Reviewer
+export default ReviewerStats

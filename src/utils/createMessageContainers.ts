@@ -1,17 +1,17 @@
 import { APIContainerComponent, APIMediaGalleryItem, ContainerBuilder, Guild, GuildMember, User, MediaGalleryBuilder, SectionBuilder, SeparatorBuilder, SeparatorSpacingSize, TextDisplayBuilder, ThumbnailBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 import { GuildInterface } from "../struct/Guild.js";
-import { BuilderInterface } from "../struct/Builder.js";
+import { MinecraftPlayerInterface } from "../struct/MinecraftPlayer.js";
 import { CollaboratorInterface, ParticipantType, SubmissionInterface } from "../struct/Submission.js";
 import DifficultyEmoji from "./difficultyEmoji.js";
 import { getPointsBreakdown } from "./getPointsBreakdown.js";
 
-async function createSubmissionContainer(submissionIndex : number, submissionAuthor : User, submissionBuilder: BuilderInterface, buildCount: number,  coords: string, address: string, collaboratorsCount: number, collaborators : CollaboratorInterface[], submissionImages: string[], accentColor: string, guild: Guild, reviewer? : User, submission?: SubmissionInterface) : Promise<APIContainerComponent> {
+async function createSubmissionContainer(submissionIndex : number, submissionAuthor : User, submissionMinecraftPlayer: MinecraftPlayerInterface, buildCount: number,  coords: string, address: string, collaboratorsCount: number, collaborators : CollaboratorInterface[], submissionImages: string[], accentColor: string, guild: Guild, reviewer? : User, submission?: SubmissionInterface) : Promise<APIContainerComponent> {
     let container = new ContainerBuilder()
         .setAccentColor(parseInt(accentColor, 16))
         .addSectionComponents(
             new SectionBuilder()
                 .addTextDisplayComponents(
-                    createTextDisplayBuilder( `**${submissionBuilder.mcUsername}**`), 
+                    createTextDisplayBuilder( `**${submissionMinecraftPlayer.username}**`), 
                     createTextDisplayBuilder( `# [#${submissionIndex}](https://www.btebalkans.com)`) //#ToDo: Replace url with something useful it the future, ex /sub/<id>
                 )
                 .setThumbnailAccessory(
@@ -121,11 +121,11 @@ async function createSubmissionContainer(submissionIndex : number, submissionAut
  * @param plotAuthor The guild member that is the plot author
  * @param accentColor The accent color of the container
  * @param builderMember The optional guild member of the builder
- * @param builder The optional builder info
+ * @param builderMinecraftPlayer The optional builder Minecraft player data
  * @param plotComplete The optional date of the date when the plot was completed
  * @returns The ContainerBuilder of the container for the plot
  */
-function createPlotContainer(plotAddress: string, plotCoords: string, plotDifficulty: number, refPhoto: string, mapUrl: string, plotAuthor : GuildMember, accentColor: string, builderMember: GuildMember = null, builder: BuilderInterface = null, plotComplete: number = null) : ContainerBuilder {
+function createPlotContainer(plotAddress: string, plotCoords: string, plotDifficulty: number, refPhoto: string, mapUrl: string, plotAuthor : GuildMember, accentColor: string, builderMember: GuildMember = null, builderMinecraftPlayer: MinecraftPlayerInterface = null, plotComplete: number = null) : ContainerBuilder {
     let container = new ContainerBuilder()
         .setAccentColor(parseInt(accentColor, 16))
         .addSectionComponents(
@@ -163,14 +163,14 @@ function createPlotContainer(plotAddress: string, plotCoords: string, plotDiffic
     const editButton = new ButtonBuilder().setCustomId('plot_edit').setLabel('Edit').setEmoji('📝').setStyle(ButtonStyle.Success)
     const deleteButton = new ButtonBuilder().setCustomId('plot_delete').setLabel('Delete').setEmoji('🗑️').setStyle(ButtonStyle.Danger)
 
-    if(builder && builderMember) {
+    if(builderMinecraftPlayer && builderMember) {
         if(plotComplete) {
             container.addTextDisplayComponents(
-                createTextDisplayBuilder(`**Completed by:** \`${builder.mcUsername}\`(${builderMember}) on **${plotComplete}**`)
+                createTextDisplayBuilder(`**Completed by:** \`${builderMinecraftPlayer.username}\`(${builderMember}) on **${plotComplete}**`)
             )
         } else {
             container.addTextDisplayComponents(
-                createTextDisplayBuilder(`**Builder:** \`${builder.mcUsername}\`(${builderMember})`)
+                createTextDisplayBuilder(`**Builder:** \`${builderMinecraftPlayer.username}\`(${builderMember})`)
             )
         }
     }else

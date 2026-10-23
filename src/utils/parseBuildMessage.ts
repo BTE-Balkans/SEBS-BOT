@@ -1,8 +1,8 @@
 import { Guild, Message } from "discord.js";
 import { CollaboratorInterface, ParticipantType, SubmissionInterface } from "../struct/Submission.js";
-import Builder, { BuilderInterface } from "../struct/Builder.js";
-import { checkMinecraftUsername } from "./ensureBuilderMinecraftUsername.js";
-import { Plot } from "../struct/Plot.js";
+import MinecraftPlayer ,{ MinecraftPlayerInterface } from "../struct/MinecraftPlayer.js";
+import { getMinecraftProfile } from "./ensureBuilderMinecraftUsername.js";
+import Plot from "../struct/Plot.js";
 import { GuildInterface } from "../struct/Guild.js";
 import { error } from "console";
 
@@ -212,21 +212,21 @@ async function parseContributors(rawContributors : string[], numberRegex: RegExp
         //Validate the minecraft usernames
         for(let mcUsername of mcUsernames) {
             try {
-                let res = checkMinecraftUsername(mcUsername)
-                if(!res)
-                    error = `INVALID MINECRAFT USERNAME: \`${mcUsername}\`. ${res['message']}`
+                let res = getMinecraftProfile(mcUsername)
+                if('error' in res)
+                    error = `INVALID MINECRAFT USERNAME: \`${mcUsername}\`. ${res['error']}`
             }catch(err) {
                 error = `ERROR WHILE FETCHING MINECRAFT USER INFO: \n ${err}`
             }
 
             //Check if the Minecraft username is tied to an existing tracked builder
-            let builder : BuilderInterface = await Builder.findOne({guildId: guild.id, mcUsername: mcUsername}).lean()
+            let builderMinecraftPlayer : MinecraftPlayerInterface = await MinecraftPlayer.findOne({username: mcUsername}).lean()
             //If such builder exists, remove the username from mcUsernames and add the builder to the members array 
-            if(builder) {
+            if(builderMinecraftPlayer) {
                 mcUsernames.splice(mcUsernames.indexOf(mcUsername), 1)
                 //Check that the builder id is different from the submission author
-                if(builder.id != authorId)
-                    members.push(builder.id)
+                if(builderMinecraftPlayer.id != authorId)
+                    members.push(builderMinecraftPlayer.id)
             }
         } 
 

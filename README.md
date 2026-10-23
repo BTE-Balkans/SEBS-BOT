@@ -23,8 +23,6 @@ The junior builder is able to, in this time period, close their application, whi
 
 When promoted, the application of the now full builder gets marked as closed, but the builder thread gets auto-archived after a week. This enables further help from the chosen helper, by simply tagging the helper in the private builder thread
 
-> **Note**: Helpers must first be setup for them to be shown in the builder application survey. See '/setup helpersetup' under [commands](./docs/COMMANDS.md) to find out more
-
 ### Builder submissions system
 This system enables builders to auto rank-up through rank 1 to 5 by submitting their builds. The builds once posted in the builder submissions channel are auto checked if they are in the correct format. If they are, they get re-posted by tge bot, and a reviewer must first claim the submitted build. This saves time that would else be spent among reviewers coordinating which submission will each reviewer review, as this process is a now a first comes, first serves basis.  
 Once claimed, a 🔎 reaction is given to the submission message, and It's container get updated, marking it as under review. This also sends a direct message to the builder, notifying them of the update to the submission. Any further updates are also sent directly to the builder, which can be turned off per builder.

@@ -10,7 +10,7 @@ const Submission = mongoose.model<SubmissionInterface>(
         submissionType: Number,
         userId: String,
         pointsTotal: Number,
-        collaborators: [{type: {type: Number, enum: [0, 1], default: 0}, value: String}],
+        collaborators: [new mongoose.Schema({type: {type: Number, enum: [0, 1], default: 0}, value: String})],
         collaboratorsCount: Number,
         buildImages: [String], //Links to build images
         buildCount: Number,
@@ -45,7 +45,7 @@ export interface SubmissionInterface {
     collaborators?: CollaboratorInterface[]
     collaboratorsCount?: number
     buildImages: string[]
-    buildCount: number,
+    buildCount: number
     bonus?: number
     edit?: boolean
     size?: number

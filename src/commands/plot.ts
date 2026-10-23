@@ -1,5 +1,5 @@
 import Command from "../struct/Command.js";
-import { Plot, PlotInterface } from "../struct/Plot.js";
+import Plot, { PlotInterface } from "../struct/Plot.js";
 import Responses from "../utils/responses.js";
 import { deletePlot, editPlot } from "../trial/handlePlot.js";
 import Difficulty from "../struct/Difficulty.js";

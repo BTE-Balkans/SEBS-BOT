@@ -1,7 +1,6 @@
 import Command from '../struct/Command.js'
 import { Message, TextChannel } from 'discord.js'
-import Submission, { ParticipantType } from '../struct/Submission.js'
-import Builder from '../struct/Builder.js'
+import Submission from '../struct/Submission.js'
 import areDmsEnabled from '../utils/areDmsEnabled.js'
 import { updateReviewerForPurge } from '../review/updateReviewer.js'
 import Rejection from '../struct/Rejection.js'
@@ -36,7 +35,7 @@ export default new Command({
 
         // Gate to ensure submission exists
         if (!originalSubmission) {
-            const rejectedSubmission = await Rejection.findById(submissionId).exec()
+            const rejectedSubmission = await Rejection.findById(submissionId).lean()
             if (rejectedSubmission) {
                 return Responses.submissionHasAlreadyBeenDeclined(i, guildData.accentColor)
             }

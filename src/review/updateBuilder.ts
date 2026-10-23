@@ -1,4 +1,4 @@
-import Builder, { BuilderInterface } from "../struct/Builder.js";
+import BuilderStats from "../struct/BuilderStats.js";
 import { ParticipantType, SubmissionInterface, SubmissionType } from "../struct/Submission.js";
 
 async function updateBuildersForPurge(purgedSubmission: SubmissionInterface) {
@@ -32,7 +32,7 @@ async function purgeBuilderPointsForSubmission(builderId: string, submission: Su
         const soloBuildsIncrement = (submission.userId == builderId) ? -1 : 0
         const contributionsIncrement = (submission.userId != builderId) ? -1 : 0
 
-        await Builder.updateOne(
+        await BuilderStats.updateOne(
             { id: submission.userId, guildId: submission.guildId},
             {
                 $inc: {

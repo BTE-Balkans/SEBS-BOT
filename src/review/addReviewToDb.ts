@@ -1,6 +1,6 @@
 import { CommandInteraction } from 'discord.js'
 import Submission, { ParticipantType, SubmissionInterface, SubmissionType } from '../struct/Submission.js'
-import Builder from '../struct/Builder.js'
+import BuilderStats from '../struct/BuilderStats.js'
 import Responses from '../utils/responses.js'
 import { GuildInterface } from '../struct/Guild.js'
 import { updateBuildersForPurge } from './updateBuilder.js'
@@ -56,7 +56,7 @@ async function addReviewToDb(
         //Update submission doc
         await Submission.updateOne({ id: submissionData.id, guildId: i.guildId }, submissionData).exec()
 
-        // update builder doc
+        // update builder stats
         if (submissionData.edit && originalSubmission && originalSubmission.feedback != null) {
             // for edits ----------------------------------------------------
             // get change from original submission, update user's total points and the countType field
@@ -80,10 +80,10 @@ async function addReviewToDb(
                 }
             })()
 
-            // update the builders doc, adding/subtracting points and building/road/sqm count
+            // update the builders stats, adding/subtracting points and building/road/sqm count
 
             //First update the org builder stats
-            await Builder.updateOne(
+            await BuilderStats.updateOne(
                 { id: submissionData.userId, guildId: i.guild.id },
                 {
                     $inc: {
@@ -98,7 +98,7 @@ async function addReviewToDb(
             if(submissionData.collaborators) {
                 for(let collaborator of submissionData.collaborators) {
                     if(collaborator.type == ParticipantType.Member) {
-                        await Builder.updateOne(
+                        await BuilderStats.updateOne(
                             { id: submissionData.userId, guildId: i.guild.id },
                             {
                                 $inc: {
@@ -123,7 +123,7 @@ async function addReviewToDb(
         } else {
             // for initial reviews ------------------------------------------
             // increment user's total points and building count/sqm/roadKMs
-            await Builder.updateOne(
+            await BuilderStats.updateOne(
                 { id: submissionData.userId, guildId: i.guild.id },
                 {
                     $inc: {
@@ -138,7 +138,7 @@ async function addReviewToDb(
             if(submissionData.collaborators) {
                 for(let collaborator of submissionData.collaborators) {
                     if(collaborator.type == ParticipantType.Member) {
-                        await Builder.updateOne(
+                        await BuilderStats.updateOne(
                             { id: submissionData.userId, guildId: i.guild.id },
                             {
                                 $inc: {

@@ -1,10 +1,10 @@
 import { Message, AttachmentBuilder, EmbedBuilder, ContainerBuilder, MessageFlags, ContainerComponent, MediaGalleryComponent, ButtonInteraction, GuildMember, userMention, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, LabelBuilder, ModalBuilder, TextDisplayBuilder, ActionRowBuilder, SeparatorBuilder, SeparatorSpacingSize, SectionBuilder, ButtonBuilder, Interaction, ComponentType, TextInputBuilder, TextInputStyle, TextChannel, resolveColor } from "discord.js";
 import Bot from "../struct/Client.js";
-import { GuildInterface } from "../struct/Guild.js";
+import { GuildInterface, SystemRole } from "../struct/Guild.js";
+import Plot, { PlotInterface } from "../struct/Plot.js";
+import Application, { ApplicationInterface } from "../struct/Application.js";
 import { parseBuildMessage } from "../utils/parseBuildMessage.js";
-import { Plot, PlotInterface } from "../struct/Plot.js";
 import { addPlotAddedReaction } from "./addPlotAddedReaction.js";
-import Builder, { BuilderInterface } from "../struct/Builder.js";
 import { claimPlot, deletePlot, editPlot } from "./handlePlot.js";
 import Responses from "../utils/responses.js";
 import getHelperMember from "../utils/getHelperMember.js";
@@ -15,10 +15,12 @@ import { createDifficultySelectMenuOptions } from "../utils/createDifficultySele
 
 async function handlePlotMsg(client : Bot, msg : Message, guildData: GuildInterface) {
     const guildMember = await msg.guild.members.fetch(msg.author.id)
-    const isHelper = guildMember.roles.cache.some(role => guildData.helperRoles.includes(role.id))
+    let helperRoles = guildData.roles.find((roles) => roles.id == SystemRole.Helper).roles
+    const isHelper = guildMember.roles.cache.some(role => helperRoles.includes(role.id))
 
     if(!isHelper) {
-        const isAdmin = guildMember.roles.cache.some(role => client.admin == role.id)
+        let adminRoles = guildData.roles.find((roles) => roles.id == SystemRole.Admin).roles
+        const isAdmin = guildMember.roles.cache.some(role => adminRoles.includes(role.id))
         if(!isAdmin) {
             return reject(msg, 'User is not an admin', guildData, '`Missing role`')
         } else {
@@ -135,16 +137,56 @@ async function assignPlotButton(i: ButtonInteraction, client: Bot, guildData: Gu
             return Responses.container(i, '**Plot is already assigned to another builder.**  \nOnly plots marked with 🟢 are free', accentColor)
 
          const helper = await getHelperMember(i, guildData)
-        //Get junior builders assigned with helper
-        const builders = (await Builder.find({guildId: guildData.id, rank: -1})).filter((user) => user?.applicationClosed != null && user.applicationClosed == false && user.threadId != null && user.helperId == helper.id)
+        //Get candidate applications assigned with helper
+        const candidateApplications = await Application.aggregate<ApplicationInterface>([
+            {
+                $match: {
+                    guildId: guildData.id,
+                    applicationClosed: false,
+                    threadId: { '$ne' : null },
+                    helperId: helper.id
+                }
+            },
+            {
+                $lookup: {
+                    from: 'guildplayer',
+                    let: { 'candidateId': '$id' },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $eq: ['$id', '$$candidateId']},
+                                        { $eq: ['$guildId', guildData.id]},
+                                        { $eq: ['$rank', -1 ]}
+                                    ]
+                                }
+                            }
+                        }
+                    ],
+                    as: 'guildplayer'
+                }
+            }, 
+            { 
+                $match : {
+                    $expr: { $gt: [{ $size: '$guildplayer' }, 0] }
+                }
+            },
+            {
+                $project: {
+                    guildplayer: 0,
+                    _id: 0
+                }
+            }
+        ])
        
 
-        if(builders.length == 0)
+        if(candidateApplications.length == 0)
             return Responses.container(i, '**No free junior builders available**', accentColor)
         
         //Create the select builder menu builder
         const selectBuilder = new StringSelectMenuBuilder({custom_id: 'plot_selectbuilder', placeholder: 'Select builder'})
-        for(let builder of builders) {
+        for(let builder of candidateApplications) {
             //Get guild member
             const guildMember = await i.guild.members.fetch(builder.id)
             if(guildMember) {
@@ -178,9 +220,9 @@ async function assignPlotButton(i: ButtonInteraction, client: Bot, guildData: Gu
 
             const builderID = resp.values.join()
 
-            let builder : BuilderInterface = builders.find((p) => p.id == builderID).toObject()
+            let candidateApplication : ApplicationInterface = candidateApplications.find((p) => p.id == builderID)
             //Claim the plot
-            let res = await claimPlot(i, client, plot, builder, helper, guildData, null, i.channel)
+            let res = await claimPlot(i, client, plot, candidateApplication, helper, guildData, null, i.channel)
             return Responses.container(i, res, accentColor)
         }catch(err) {
             console.log(`[AssignPlotButtonError]: \n > ${err}`)

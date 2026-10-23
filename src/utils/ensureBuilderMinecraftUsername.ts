@@ -1,5 +1,5 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, GuildMember, resolveColor, User } from "discord.js"
-import Builder, { BuilderInterface } from "../struct/Builder.js"
+import MinecraftPlayer, { MinecraftPlayerInterface } from "../struct/MinecraftPlayer.js"
 import { GuildInterface } from "../struct/Guild.js"
 
 /**
@@ -8,12 +8,12 @@ import { GuildInterface } from "../struct/Guild.js"
  * @param guildData 
  * @returns 
  */
-async function ensureBuilderMinecraftUsername(member: GuildMember, guildData: GuildInterface) : Promise<BuilderInterface> {
-    //Check if builder doesn't have a Minecraft username set
-    const builder : BuilderInterface = await Builder.findOne({id: member.id, guildId: member.guild.id}).lean()
-    if(builder) {
-        if(builder.mcUsername)
-            return builder
+async function ensureBuilderMinecraftUsername(member: GuildMember, guildData: GuildInterface) : Promise<MinecraftPlayerInterface> {
+    //Check if member doesn't have a Minecraft username set
+    const minecraftPlayer : MinecraftPlayerInterface = await MinecraftPlayer.findOne({id: member.id}).lean()
+    if(minecraftPlayer) {
+        if(minecraftPlayer.username)
+            return minecraftPlayer
         
         //Send DM to builder, prompting them for their Minecraft username
         await promptBuilderMinecraftUsername(member, guildData)
@@ -35,7 +35,7 @@ async function promptBuilderMinecraftUsername(member: GuildMember, guildData: Gu
     await dm.send({
         embeds: [{
             title: `${guildData.emoji} | Missing Builder Info!`,
-            description: `Missing Minecraft username for builder ${member}**`,
+            description: `Missing Minecraft username for member ${member}**`,
             color: resolveColor(`#${guildData.accentColor}`)
         }], 
         components: [row.toJSON()]
@@ -44,19 +44,22 @@ async function promptBuilderMinecraftUsername(member: GuildMember, guildData: Gu
     })
 }
 
-async function checkMinecraftUsername(mcUsername: string,  mcUsernameRegex = /^[a-zA-Z0-9_]{3,16}/) {
+async function getMinecraftProfile(mcUsername: string,  mcUsernameRegex = /^[a-zA-Z0-9_]{3,16}/) {
 
     if(!mcUsernameRegex.test(mcUsername) || mcUsername.length < 3 || mcUsername.length > 16)
-        return false
+        return { 'error' : 'Invalid username. Length must be between 3 and 16 characters.' }
 
     let api = await fetch(`https://api.mojang.com/users/profiles/minecraft/${mcUsername}`)
     let res = await api.json()
 
     //If the response json contain a errorMessage key, builder with given username was not found 
     if(res['errorMessage'])
-        return false
-
-    return true
+        return { 'error' : res['errorMessage'] }
+    
+    return {
+        'uuid' : res['id'],
+        'name' : res['name']
+    }
 }
 
-export { ensureBuilderMinecraftUsername, checkMinecraftUsername }
+export { ensureBuilderMinecraftUsername, getMinecraftProfile }

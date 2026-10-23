@@ -1,17 +1,18 @@
 import { ActionRowBuilder, AttachmentBuilder, AttachmentFlags, AttachmentFlagsBitField, ButtonBuilder, ButtonStyle, ComponentType, ContainerBuilder, ContainerComponent, Guild, Interaction, MediaGalleryComponent, Message, MessageFlags, ModalBuilder, resolveColor, TextInputBuilder, TextInputStyle, User } from "discord.js";
-import { GuildInterface } from "../struct/Guild.js";
+import { GuildInterface, SystemRole } from "../struct/Guild.js";
 import { parseBuildMessage } from "../utils/parseBuildMessage.js";
-import { insertBuilder } from "./insertBuilder.js";
-import Builder, { BuilderInterface } from "../struct/Builder.js";
+import BuilderStats from "../struct/BuilderStats.js";
 import Bot from "../struct/Client.js";
-import { ensureBuilderMinecraftUsername } from "../utils/ensureBuilderMinecraftUsername.js";
 import Submission, { CollaboratorInterface, ParticipantType, SubmissionInterface } from "../struct/Submission.js";
+import Plot, { PlotInterface } from "../struct/Plot.js";
+import MinecraftPlayer, { MinecraftPlayerInterface } from "../struct/MinecraftPlayer.js";
+import { ensureBuilderMinecraftUsername } from "../utils/ensureBuilderMinecraftUsername.js";
 import { downloadAttachment } from "../utils/downloadAttachment.js";
 import { createSubmissionContainer } from "../utils/createMessageContainers.js";
-import { Plot, PlotInterface } from "../struct/Plot.js";
 import { requestPlotRelease } from "../trial/handlePlot.js";
 import { rejectMessage } from "../utils/rejectMessage.js";
 import { getNewSubmissionIndex } from "../utils/getNewSubmissionIndex.js";
+import insertGuildPlayer from "../utils/insertGuildPlayer.js";
 
 /**
  * Parse a submission message and insert it into the db after re-posting it into the submissions channel
@@ -63,16 +64,16 @@ async function handleSubmissionMsg(client : Bot, msg: Message, guildData: GuildI
     const submissionAuthor = await msg.guild.members.fetch(msg.author.id)
 
     // insert builder if not yet added
-    await insertBuilder(submissionAuthor, guildData)
+    await insertGuildPlayer(submissionAuthor, guildData, SystemRole.Builder)
 
     //Fetch Guild member
     const guildMember = await msg.guild.members.fetch(msg.author.id)
 
     //Confirm if builder has a Minecraft username set
-    const submissionBuilder = await ensureBuilderMinecraftUsername(guildMember, guildData)
+    const submissionBuilderMinecraftPlayer = await ensureBuilderMinecraftUsername(guildMember, guildData)
 
     //Remind user to set their Minecraft username
-    if(!submissionBuilder) 
+    if(!submissionBuilderMinecraftPlayer) 
         return reject(msg, guildData, '**Set your Minecraft username and resend the submission**', 'INCOMPLETE INFO: MISSING MINECRAFT USERNAME',  60 * 1000)
 
     //Check if plot with the give address already exists
@@ -100,7 +101,7 @@ async function handleSubmissionMsg(client : Bot, msg: Message, guildData: GuildI
     //If any the contributors of type member exist, insert them as builder
     for(let collaborator of contributorsInfo.collaborators) {
             if(collaborator.type == ParticipantType.Member)
-                insertBuilder(await msg.guild.members.fetch(collaborator.value), guildData)
+                await insertGuildPlayer(await msg.guild.members.fetch(collaborator.value), guildData, SystemRole.Builder)
         }
 
     //Download the submission images
@@ -131,7 +132,7 @@ async function handleSubmissionMsg(client : Bot, msg: Message, guildData: GuildI
     const submissionContainer = await createSubmissionContainer(
         submissionIndex, 
         submissionAuthor.user, 
-        submissionBuilder, 
+        submissionBuilderMinecraftPlayer, 
         count,
         coords, 
         address, 
@@ -178,7 +179,7 @@ async function handleSubmissionMsg(client : Bot, msg: Message, guildData: GuildI
         $set: {
             index: submissionIndex,
             plotId: (plot) ? plot.id : newMsg.id,
-            userId: submissionBuilder.id,
+            userId: submissionBuilderMinecraftPlayer.id,
             ...collaboratorsInfo,
             collaboratorsCount: contributorsInfo.collaboratorsCount,
             buildImages: buildImages,
@@ -213,14 +214,14 @@ async function reject(msg: Message, guildData: GuildInterface, reason: string, t
 
 async function updateSubmissionMsg(client: Bot, submissionMsg: Message, submission: SubmissionInterface, guildData: GuildInterface, guild: Guild, reviewer?: User) {
     let plot : PlotInterface = await Plot.findOne({id: submission.plotId, guildId: guildData.id}).lean()
-    let submissionBuilder : BuilderInterface = await Builder.findOne({id: submission.userId, guildId: guildData.id}).lean()
+    let submissionMinecraftPlayer : MinecraftPlayerInterface = await MinecraftPlayer.findOne({id: submission.userId, guildId: guildData.id}).lean()
     let submissionUser = await client.users.fetch(submission.userId)
 
     //Create the submission container with the new info
     let submissionContainer = await createSubmissionContainer(
         submission.index,
         submissionUser,
-        submissionBuilder, 
+        submissionMinecraftPlayer, 
         submission.buildCount,
         plot.coords,
         plot.address,

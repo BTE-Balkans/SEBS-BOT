@@ -1,12 +1,41 @@
 import { ActionRowBuilder, APIEmbed, ButtonBuilder, ButtonStyle, ChatInputCommandInteraction, GuildBasedChannel, Message, resolveColor, User } from 'discord.js'
-import Command from '../struct/Command.js'
-import Guild, { GuildInterface } from '../struct/Guild.js'
+import Command, { CommandArg } from '../struct/Command.js'
+import Guild, { GuildInterface, SystemRole } from '../struct/Guild.js'
 import Bot from '../struct/Client.js'
-import Helper, { HelperInterface } from '../struct/Helper.js'
 import Difficulty from '../struct/Difficulty.js'
 import Responses from '../utils/responses.js'
 import { APIEmbedField } from 'discord-api-types/v9'
 import { parseMessageUrl } from '../utils/parseMessageUrl.js'
+import GuildPlayer, { GuildPlayerInterface } from '../struct/GuildPlayer.js'
+import ReviewerStats, { ReviewerStatsInterface } from '../struct/ReviewerStats.js'
+import { insertReviewerStats } from '../review/insertReviewerStats.js'
+import insertGuildPlayer from '../utils/insertGuildPlayer.js'
+
+const addRemoveRoleArgs: CommandArg[]= [
+    {
+        name: 'systemrole',
+        description: 'Type of system role',
+        choices: [
+            ['admin', 0],
+            ['staff', 1],
+            ['moderator', 2],
+            ['helper', 3],
+            ['media', 4],
+            ['reviewer', 5],
+            ['mayor', 6],
+            ['builder', 7],
+            ['candidate', 8]
+        ],
+        required: true,
+        optionType: 'integer'
+    },
+    {
+        name: 'discordrole',
+        description: 'Discord role ID',
+        required: true,
+        optionType: 'role'
+    }
+]
 
 export default new Command({
     name: 'setup',
@@ -58,32 +87,18 @@ export default new Command({
                     description: 'The accent color of the embeds, containers, etc (Start with #, ex #000000)',
                     required: false,
                     optionType: 'string'
-                },
-                {
-                    name: 'addroleasreviewer',
-                    description: 'Mark role ID as reviewer',
-                    required: false,
-                    optionType: 'string'
-                },
-                {
-                    name: 'removeroleasreviewer',
-                    description: 'Unmark role ID as reviewer',
-                    required: false,
-                    optionType: 'string'
-                },
-                {
-                    name: 'addroleashelper',
-                    description: 'Mark role ID as helper',
-                    required: false,
-                    optionType: 'string'
-                },
-                {
-                    name: 'removeroleashelper',
-                    description: 'Unmark role ID as reviewer',
-                    required: false,
-                    optionType: 'string'
                 }
             ]
+        },
+        {
+            name: 'addrole',
+            description: 'Add role to system role',
+            args: [ ...addRemoveRoleArgs ]
+        },
+        {
+            name: 'removerole',
+            description: 'Remove role from system role',
+            args: [ ...addRemoveRoleArgs ]
         },
         {
             name: 'applicationformatmsg',
@@ -167,18 +182,6 @@ export default new Command({
             ]
         },
         {
-            name: 'setuphelper',
-            description: 'Add and setup user as helper',
-            args: [
-                {
-                    name: 'user',
-                    description: 'User to setup as helper',
-                    optionType: 'user',
-                    required: true
-                }
-            ]
-        },
-        {
             name: 'helperstatus',
             description: 'Mark helper as inactive or active',
             args: [
@@ -216,10 +219,6 @@ export default new Command({
             const plotschannel = options.getString('plotschannel')
             const formattingmsg = options.getString('formattingmsg')
             const accentColor : string = options.getString('accentcolor')
-            const addroleasreviewer = options.getString('addroleasreviewer')
-            const removeroleasreviewer = options.getString('removeroleasreviewer')
-            const addroleashelper = options.getString('addroleashelper')
-            const removeroleashelper = options.getString('removeroleashelper')
 
             if(builderchannelid) {
                 const builderChannel = await i.guild.channels.fetch(builderchannelid)
@@ -265,26 +264,53 @@ export default new Command({
                     return Responses.embed(i, `**Invalid input color code:** #${color}`)
                 }
             }
+        } else if(subCommand == 'addrole' || subCommand == 'removerole') {
+            let addRole = subCommand == 'addrole'
+            let systemRoleEnumIndex = options.getInteger('systemrole')
+            let role = options.getRole('discordrole')
 
-            if(addroleasreviewer || removeroleasreviewer) {
-                try {
-                    let roles : string[] = client.guildsData.get(guildId).reviewerRoles
-                    hasInputData = addRemoveRole(addroleasreviewer, removeroleasreviewer, roles, 'reviewer', 'reviewerRoles', hasInputData, i, guild)
-                }catch(err) {
-                    return Responses.embed(i, `**Error while adding/removing reviewer role:** ${err.message}`)
+            let systemRoles = client.guildsData.get(guildId).roles
+            if(!systemRoles)
+                systemRoles = []
+
+            if(systemRoles.some(systemRole => systemRole.id == systemRoleEnumIndex)) {
+                let systemRolesIndex = systemRoles.findIndex(systemRole => systemRole.id == systemRoleEnumIndex)
+                
+                let roles = systemRoles[systemRolesIndex].roles
+
+                if(addRole) {
+                    //Check if role is already marked
+                    if(roles.includes(role.id)) {
+                        return Responses.embed(i, `Role ${role} is already tracked as ${SystemRole[systemRoleEnumIndex]} system role`)
+                    } else {
+                        roles.push(role.id)
+                        hasInputData = true
+                    }
+                } else if(roles.includes(role.id)) {
+                    roles.forEach((_role, index) => {
+                        if(_role == role.id)
+                            roles.splice(index, 1)
+                    })
+                    hasInputData = true
+                }else {
+                    return Responses.embed(i, `Role ${role} not tracked as ${SystemRole[systemRoleEnumIndex]} system role`)
                 }
-            }
 
-            if(addroleashelper || removeroleashelper) {
-                try {
-                    let roles: string[] = client.guildsData.get(guildId).helperRoles
-                    hasInputData = addRemoveRole(addroleashelper, removeroleashelper, roles, 'helper', 'helperRoles', hasInputData, i, guild)
-                }catch(err) {
-                    return Responses.embed(i, `**Error while adding/removing helper role:** ${err.message}`)
+                if(hasInputData) {
+                    systemRoles[systemRolesIndex].roles = roles
+                    guild['roles'] = systemRoles
                 }
-            }
 
-        } else if(subCommand == 'applicationformatmsg') {
+
+            } else if(addRole) {
+                systemRoles.push({id: systemRoleEnumIndex, roles: [ role.id ]})
+                guild['roles'] = systemRoles
+                hasInputData = true
+            }else {
+                return Responses.embed(i, `System role ${SystemRole[systemRoleEnumIndex]} does not track any Discord role`)
+            }
+        }
+         else if(subCommand == 'applicationformatmsg') {
             let applicationFormatMsg = {}
             let res = await Guild.findOne({id: guildId})
             if(res.applicationFormatMsg)
@@ -425,35 +451,40 @@ export default new Command({
             } catch(err) {
                 return Responses.embed(i, `**[FormattingMsgException]:** \n${err}}`)
             }
-        } else if(subCommand == 'setuphelper' || subCommand == 'helperstatus') {
+        } else if(subCommand == 'helperstatus') {
             const user : User = options.getUser('user')
             const guildUser = await i.guild.members.fetch(user) 
+            
+            //Get the helper roles for the guild
+            let helperRoles = guildData.roles.find((role) => role.id == SystemRole.Helper)?.roles
+            if(!helperRoles || helperRoles.length == 0)
+                return Responses.embed(i, `**No helper roles are set for this guild**`)
+            
             //Check if guild user has a helper role
-            let isHelperRole = guildUser.roles.cache.some((role) => guildData.helperRoles.includes(role.id))
+            let isHelperRole = guildUser.roles.cache.some((role) => helperRoles.includes(role.id))
             if(isHelperRole) {
                 let isInactive : boolean = true
+                //Find if helper is tracked
+                let reviewer : GuildPlayerInterface = await GuildPlayer.findOne({id: guildUser.id, guildId: guildId, roles: SystemRole.Helper}).then(doc => doc?.toJSON({getters: true}))
+                let meta = {}
 
-                let helper : HelperInterface = await Helper.findOne({id: guildUser.id, guildId: guildId}).lean()
-                if(helper) {
-                    if(subCommand == 'setuphelper') {
-                        if(helper.inactive) {
-                            return Responses.embed(i, `**Helper ${guildUser} status is inactive**`)
-                        }
-                        return Responses.embed(i, `**Helper ${guildUser} is already setup**`)
-                    }else {
-                        //Else mark user as inactive or active
-                        isInactive = i.options.getBoolean('inactive')
+                if(reviewer && reviewer.meta) {
+                    //Else mark user as inactive or active
+                    isInactive = i.options.getBoolean('inactive')
+                    meta = JSON.parse(reviewer.meta)
 
-                        if(helper.inactive == isInactive) {
-                            return Responses.embed(i, `**Helper ${guildUser} status is already ${(isInactive) ? 'inactive' : 'active'}**`)
-                        }
+                    if(meta && reviewer.meta['inactive'] == isInactive) {
+                        return Responses.embed(i, `**Helper ${guildUser} status is already ${(isInactive) ? 'inactive' : 'active'}**`)
                     }
-                }else if(subCommand == 'helperstatus') {
-                    return Responses.embed(i, `**Setup ${guildUser} as helper first**`)
                 }
 
-                Helper.updateOne({id: guildUser.id, guildId: guildId}, (subCommand == 'setuphelper') ? {'$set': { 'inactive': false}} : { '$set': { 'inactive': isInactive}}, {upsert: true}).then((res) => {
-                    return Responses.embed(i, `**Helper ${guildUser} ${(subCommand == 'helperstatus') ? 'status updated' : 'setup'}**`)
+                meta['inactive'] = isInactive
+
+                //Track helper if not yet
+                insertGuildPlayer(guildUser, guildData, SystemRole.Helper)
+
+                return GuildPlayer.updateOne({id: guildUser.id, guildId: guildId}, { '$set': { 'meta': JSON.stringify(meta)}}).then((res) => {
+                    return Responses.embed(i, `**Helper ${guildUser} status updated**`)
                 }).catch((err) => {
                     console.log(err)
                     return Responses.embed(i, `**Error while updating ${guildUser}**\n > ${err}`)
@@ -479,37 +510,6 @@ export default new Command({
         }
     }
 })
-
-function addRemoveRole(addrole: string, removerole: string, roles: string[], roleType: string, roleProperty: string, hasInputData: boolean, i: ChatInputCommandInteraction, guild: {}) : boolean{
-    if(addrole == removerole) {
-        throw new Error(`Add and remove ${roleType} role is the same`)
-    }
-
-    if(addrole) {
-        //Check if role is already marked
-        if(roles.includes(addrole)) {
-            throw new Error(`Role ${addrole} is already marked as ${roleType}`)
-        } else {
-            roles.push(addrole)
-            guild[`${roleProperty}`] = roles
-            hasInputData = true
-        }
-    }
-
-    if(removerole) {
-        if(roles.includes(removerole)) {
-            roles.forEach((role, index) => {
-                if(role == removerole)
-                    roles.splice(index, 1)
-            })
-
-            guild[`${roleProperty}`] = roles
-            hasInputData = true
-        }
-    }
-
-    return hasInputData;
-}
 
 async function getSettingsEmbed(i : ChatInputCommandInteraction, client: Bot, guildId: string, msg: string) : Promise<APIEmbed> {
     const guildData = await Guild.findOne({id: guildId})
@@ -549,26 +549,19 @@ async function getSettingsEmbed(i : ChatInputCommandInteraction, client: Bot, gu
         fields.push({ name: 'Accent color', value: `#${guildData.accentColor}`})
     }
 
-    if(guildData.reviewerRoles && guildData.reviewerRoles.length > 0) { 
-        let roles = ''
-        for(let r = 0; r < guildData.reviewerRoles.length; r++) {
-            const roleID = guildData.reviewerRoles.at(r)
-            const role = await i.guild.roles?.fetch(roleID)
-            if(role)
-                roles += (r > 0) ? `\n${role} (${roleID})` : `${role} (${roleID})` 
-        }
-        fields.push({name: `Reviewer roles`, value: roles})
-    }
+    if(guildData.roles && guildData.roles.length > 0) {
+        for(let r = 0; r < guildData.roles.length; r++) {
+            let systemRole = guildData.roles.at(r)
+            let roles = ''
+            for(let ind = 0; ind < systemRole.roles.length; ind++) {
+                const roleID = systemRole.roles.at(ind)
+                const role = await i.guild.roles?.fetch(roleID)
+                if(role)
+                    roles += (ind > 0) ? `\n${role} (${roleID})` : `${role} (${roleID})`
+            }
 
-    if(guildData.helperRoles && guildData.helperRoles.length > 0) {
-        let helpers = ''
-        for(let h = 0; h < guildData.helperRoles.length; h++) {
-            const roleID = guildData.helperRoles.at(h)
-            const role = await i.guild.roles?.fetch(roleID)
-            if(role)
-                helpers += (h > 0) ? `\n${role} (${roleID})` : `${role} (${roleID})`
+            fields.push({name: `${SystemRole[systemRole.id]} roles`, value: roles})
         }
-        fields.push({name: 'Helper roles', value: helpers})
     }
 
     if(guildData.applicationFormatMsg) {

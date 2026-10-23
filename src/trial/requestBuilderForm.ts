@@ -1,6 +1,8 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, Interaction, MessageFlags, TextChannel } from "discord.js";
 import Bot from "../struct/Client.js";
-import Builder, { BuilderInterface } from "../struct/Builder.js";
+import GuildPlayer, { GuildPlayerInterface } from "../struct/GuildPlayer.js";
+import Application, { ApplicationInterface } from "../struct/Application.js";
+import MinecraftPlayer, { MinecraftPlayerInterface } from "../struct/MinecraftPlayer.js";
 import Responses from "../utils/responses.js";
 import { getBuilderRankFromRoles } from "../utils/getBuilderRankFromRoles.js";
 
@@ -18,19 +20,21 @@ async function requestBuilderForm(i: ButtonInteraction, client: Bot, reopenAppli
     //Get guild data
     const guildData = client.guildsData.get(i.guild.id)
     
-    //Check if user is already an junior builder
-    const builder : BuilderInterface = await Builder.findOne({id: i.user.id, guildId: i.guildId}).lean()
-    if(builder?.threadId && !builder?.applicationClosed && builder?.rank == -1) {
+    //Check if user is already an candidate
+    const candidatePlayer : GuildPlayerInterface = await GuildPlayer.findOne({id: i.user.id, guildId: i.guildId}).lean()
+    const candidateApplication : ApplicationInterface = await Application.findOne({ id: i.user.id, guildId: i.guildId }).lean()
+    const candidateMinecraftPlayer : MinecraftPlayerInterface = await MinecraftPlayer.findOne({id: i.user.id}).lean()
+    if(candidateApplication?.threadId && !candidateApplication?.applicationClosed && candidatePlayer?.rank == -1) {
         if(i.channel.isThread())  
             return Responses.embed(i, '**Builder application already open', guildData.accentColor)
         
         //Get builder channel
         const builderChannel = (await i.guild.channels.cache.get(guildData.buildersChannel)) as TextChannel
         //Get the builder thread
-        const builderThread = await builderChannel.threads.fetch(builder.threadId)
+        const builderThread = await builderChannel.threads.fetch(candidateApplication.threadId)
 
         return Responses.embed(i,`**Builder application already open. Head to ${builderThread}**`, guildData.accentColor)
-    } else if(builder?.applicationClosed && !reopenApplication && builder?.rank == -1) {
+    } else if(candidateApplication?.applicationClosed && !reopenApplication && candidatePlayer?.rank == -1) {
         const reopenButton = new ButtonBuilder()
             .setCustomId('builder_reopenapplication')
             .setLabel('Reopen')
@@ -46,9 +50,9 @@ async function requestBuilderForm(i: ButtonInteraction, client: Bot, reopenAppli
     const member = await i.guild.members.fetch(i.user.id)
     //If the member rank is greater than -1, the member already has a full builder role
     const hasBuilderRole = getBuilderRankFromRoles(member, guildData) > -1
-    //Check if member already has a builder role, is registered as a full builder and has their Minecraft username set
-    //Else either register them as junior or full builder if they already have a builder role, but they don't ex their MC username set
-    if(hasBuilderRole && builder?.rank != -1 && builder?.mcUsername){
+    //Check if member already has a builder role, is registered as a builder and has their Minecraft username set
+    //Else either register them as candidate or builder if they already have a builder role, but they don't ex their MC username set
+    if(hasBuilderRole && candidatePlayer?.rank != -1 && candidateMinecraftPlayer?.username){
         return Responses.userAlreadyBuilder(i, guildData.accentColor)
     }
     

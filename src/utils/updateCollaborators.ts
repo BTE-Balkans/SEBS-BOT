@@ -1,7 +1,7 @@
 import { isIfStatement } from "typescript";
 import { CollaboratorInterface, ParticipantType } from "../struct/Submission.js";
 import { GuildInterface } from "../struct/Guild.js";
-import Builder, { BuilderInterface } from "../struct/Builder.js";
+import MinecraftPlayer, { MinecraftPlayerInterface } from "../struct/MinecraftPlayer.js";
 
 /**
  * Update the collaborators array if any collaborators of type Player 
@@ -14,11 +14,11 @@ async function updateCollaborators(collaborators: CollaboratorInterface[], guild
     for(let i = 0; i < collaborators.length; i++) {
         let collaborator = collaborators.at(i)
         if(collaborator.type == ParticipantType.Player) {
-            let builder : BuilderInterface = await Builder.findOne({guildId: guildData.id, mcUsername: collaborator.value}).lean()
-            if(builder) {
-                //If a builder was found, change the item type to Member, and the item value to the id of the builder
+            let builderMinecraftPlayer : MinecraftPlayerInterface = await MinecraftPlayer.findOne({username: collaborator.value}).lean()
+            if(builderMinecraftPlayer) {
+                //If a tracked minecraft player was found, change the item type to Member, and the item value to the id of the builder
                 collaborator.type = ParticipantType.Member
-                collaborator.value = builder.id
+                collaborator.value = builderMinecraftPlayer.id
                 collaborators[i] = collaborator
             }
         }
